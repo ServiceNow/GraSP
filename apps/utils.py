@@ -1,4 +1,10 @@
-import streamlit as st
+try:
+    import streamlit as st
+except ModuleNotFoundError:
+    raise ModuleNotFoundError(
+        "GraSP UI requires the optional 'ui' dependencies. "
+        "Install them with: pip install 'grasp[ui]'"
+    )
 import httpx
 from openai import AsyncAzureOpenAI
 from mistralai_azure import MistralAzure

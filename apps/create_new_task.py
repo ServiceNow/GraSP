@@ -1,18 +1,24 @@
 from pathlib import Path
-import streamlit as st
 import yaml
 from datasets import load_dataset, get_dataset_config_names
-from streamlit_flow import streamlit_flow
-from streamlit_flow.elements import StreamlitFlowNode, StreamlitFlowEdge
-from streamlit_flow.state import StreamlitFlowState
-from streamlit_flow.layouts import (
-    TreeLayout,
-    RadialLayout,
-    LayeredLayout,
-    ForceLayout,
-    StressLayout,
-    RandomLayout,
-)
+try:
+    import streamlit as st
+    from streamlit_flow import streamlit_flow
+    from streamlit_flow.elements import StreamlitFlowNode, StreamlitFlowEdge
+    from streamlit_flow.state import StreamlitFlowState
+    from streamlit_flow.layouts import (
+        TreeLayout,
+        RadialLayout,
+        LayeredLayout,
+        ForceLayout,
+        StressLayout,
+        RandomLayout,
+    )
+except ModuleNotFoundError:
+    raise ModuleNotFoundError(
+        "GraSP UI requires the optional 'ui' dependencies. "
+        "Install them with: pip install 'grasp[ui]'"
+    )
 import time
 import json
 import csv

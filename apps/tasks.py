@@ -1,18 +1,25 @@
-import streamlit as st
+
 import os
 import yaml
 from pathlib import Path
-from streamlit_flow import streamlit_flow
-from streamlit_flow.elements import StreamlitFlowNode, StreamlitFlowEdge
-from streamlit_flow.state import StreamlitFlowState
-from streamlit_flow.layouts import (
-    TreeLayout,
-    RadialLayout,
-    LayeredLayout,
-    ForceLayout,
-    StressLayout,
-    RandomLayout,
-)
+try:
+    import streamlit as st
+    from streamlit_flow import streamlit_flow
+    from streamlit_flow.elements import StreamlitFlowNode, StreamlitFlowEdge
+    from streamlit_flow.state import StreamlitFlowState
+    from streamlit_flow.layouts import (
+        TreeLayout,
+        RadialLayout,
+        LayeredLayout,
+        ForceLayout,
+        StressLayout,
+        RandomLayout,
+    )
+except ModuleNotFoundError:
+    raise ModuleNotFoundError(
+        "GraSP UI requires the optional 'ui' dependencies. "
+        "Install them with: pip install 'grasp[ui]'"
+    )
 
 TASKS_DIR = Path("tasks")
 

@@ -1,50 +1,132 @@
-[tool.poetry]
-name = "GraSP"
+[build-system]
+requires = ["setuptools>=75", "wheel", "build>=1.2.1"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "grasp"
 version = "0.1.0"
-description = "GRAph-oriented Synthetic data generation Pipeline"
-authors = ["Gopal Sarda <gopal.sarda@servicenow.com>","Bidyapati Pradhan <bidyapati.pradhan@servicenow.com>", "Jishnu S Nair <jishnus.nair@servicenow.com>", "Surajit Dasgupta <surajit.dasgupta@servicenow.com>", "Vipul Mittal <vipul.mittal@servicenow.com>", "Omkar Anustoop <omkar.anustoop@servicenow.com>", "Amit Saha <amit.saha@servicenow.com>", "Sriram Puttagunta <sriram.puttagunta@servicenow.com>"]
+description = "GRAph-oriented Synthetic data generation Pipeline library"
 readme = "README.md"
-package-mode = false
+requires-python = ">=3.11"
+authors = [
+  {name = "Bidyapati Pradhan", email = "bidyapati.pradhan@servicenow.com"},
+  {name = "Surajit Dasgupta", email = "surajit.dasgupta@servicenow.com"},
+  {name = "Amit Kumar Saha", email = "amit.saha@servicenow.com"},
+  {name = "Sriram Puttagunta", email = "sriram.puttagunta@servicenow.com"},
+  {name = "Omkar Anustoop", email = "omkar.anustoop@servicenow.com"},
+  {name = "Vipul Mittal", email = "vipul.mittal@servicenow.com"},
+  {name = "Gopal Sarda", email = "gopal.sarda@servicenow.com"},
+  {name = "Jishnu S Nair", email = "jishnus.nair@servicenow.com"},
+]
+maintainers = [
+  { name = "GraSP Team", email = "grasp_team@servicenow.com" }
+]
+license = {text = "Apache-2.0"}
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+]
+
+dependencies = [
+  "aiohttp",
+  "datasets",
+  "httpx",
+  "httpx-sse",
+  "huggingface-hub",
+  "langchain-community",
+  "langchain-core",
+  "langchain-mistralai",
+  "langgraph",
+  "mistralai",
+  "openai",
+  "PyYAML",
+  "transformers",
+  "grandalf",
+  "sentencepiece",
+  "protobuf",
+  "Jinja2",
+  "pathvalidate",
+  "ujson",
+  "fasttext",
+  "lexicalrichness",
+  "langchain-openai",
+  "ollama",
+  "torch",
+  "mlxtend",
+  "pandarallel",
+  "sentence-transformers"
+]
+
+[project.optional-dependencies]
+ui = [
+  "streamlit",
+  "streamlit-agraph",
+  "streamlit-autorefresh",
+  "streamlit-flow-component",
+]
+audio = ["soundfile"]
+dev = ["pytest", "build", "twine"]
+
+[project.scripts]
+grasp = "grasp.cli:main"
+grasp-tools = "grasp.tools_cli:main"
+
+[project.urls]
+Homepage = "https://github.com/ServiceNow/GraSP"
+Issues = "https://github.com/ServiceNow/GraSP/issues"
+
+[tool.setuptools]
+packages = { find = { include = ["grasp*"], exclude = ["tests*", "docs*", "grasp_lib_examples*", "apps*"] } }
+
+[tool.setuptools.package-data]
+grasp = ["**/*.yaml", "**/*.yml", "**/*.jinja2", "**/*.j2", "**/*.json"]
+
+# --- Poetry section (explicit, must duplicate dependencies) ---
+[tool.poetry]
+name = "grasp"
+version = "0.1.0"
+description = "GRAph-oriented Synthetic data generation Pipeline library"
+authors = ["GraSP Team <grasp_team@servicenow.com>"]
+license = "Apache-2.0"
+readme = "README.md"
+homepage = "https://github.com/ServiceNow/GraSP"
+repository = "https://github.com/ServiceNow/GraSP"
 
 [tool.poetry.dependencies]
-python = "^3.11"
-aiohttp = "^3.10.8"
-datasets = "^3.0.1"
-httpx = "^0.27.2"
-httpx-sse = "^0.4.0"
-huggingface-hub = "^0.25.1"
-langchain-community = "^0.3.1"
-langchain-core = "^0.3.8"
-langchain-mistralai = "^0.2.0"
-langgraph = "^0.6.2"
-mistralai = "^1.1.0"
-openai = "^1.51.0"
-pyyaml = "^6.0.2"
-transformers = "^4.45.1"
-grandalf = "^0.8"
-sentencepiece = "^0.2.0"
-protobuf = "^5.28.2"
-jinja2 = "^3.1.4"
-pathvalidate = "^3.2.1"
-ujson = "^5.10.0"
-fasttext = "^0.9.2"
-lexicalrichness = "^0.5.1"
-torch = "^2.7.0"
-pytest = "^8.4.0"
-langchain-openai = "^0.3.24"
-streamlit = "^1.46.0"
-streamlit-agraph= "^0.0.45"
-streamlit-autorefresh= "^1.0.1"
-streamlit-flow-component= "^1.6.1"
-soundfile = "^0.13.1"
-ollama = "^0.5.1"
-mlxtend = "^0.23.4"
-pandarallel = "^1.6.5"
-sentence-transformers = "^5.1.0"
+python = ">=3.11"
+aiohttp = "*"
+datasets = "*"
+httpx = "*"
+httpx-sse = "*"
+huggingface-hub = "*"
+langchain-community = "*"
+langchain-core = "*"
+langchain-mistralai = "*"
+langgraph = "*"
+mistralai = "*"
+openai = "*"
+PyYAML = "*"
+transformers = "*"
+grandalf = "*"
+sentencepiece = "*"
+protobuf = "*"
+Jinja2 = "*"
+pathvalidate = "*"
+ujson = "*"
+fasttext = "*"
+lexicalrichness = "*"
+langchain-openai = "*"
+ollama = "*"
+torch = "*"
+mlxtend = "*"
+pandarallel = "*"
+sentence-transformers = "*"
+
+[tool.poetry.extras]
+ui = ["streamlit", "streamlit-agraph", "streamlit-autorefresh", "streamlit-flow-component", "watchdog"]
+audio = ["soundfile"]
 
 [tool.poetry.group.dev.dependencies]
-setuptools = "^75.1.0"
-
-[build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+pytest = "*"
+build = "*"
+twine = "*"

@@ -1,4 +1,10 @@
-import streamlit as st
+try:
+    import streamlit as st
+except ModuleNotFoundError:
+    raise ModuleNotFoundError(
+        "GraSP UI requires the optional 'ui' dependencies. "
+        "Install them with: pip install 'grasp[ui]'"
+    )
 
 # Define the pages
 Models = st.Page("models.py", title="Models", icon="🤖")

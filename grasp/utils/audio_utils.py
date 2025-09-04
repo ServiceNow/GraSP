@@ -6,7 +6,14 @@ from typing import Any, Union
 
 import numpy as np
 import requests
-import soundfile as sf
+try:
+    import soundfile as sf
+except ModuleNotFoundError:
+    raise ModuleNotFoundError(
+        "GraSP Audio requires the optional 'audio' dependencies. "
+        "Install them with: pip install 'grasp[audio]'"
+    )
+
 
 from grasp.logger.logger_config import logger
 
