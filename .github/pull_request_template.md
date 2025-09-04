@@ -1,4 +1,4 @@
 Please go to the `Preview` tab and select the appropriate sub-template:
 
-* [Feature Template](?expand=1&template=feature_template.md)
-* [Issue Template](?expand=1&template=issue_template.md)
+* [Feature Template](https://github.com/ServiceNow/GraSP/blob/main/.github/PULL_REQUEST_TEMPLATE/feature_template.md)
+* [Issue Template](https://github.com/ServiceNow/GraSP/blob/main/.github/PULL_REQUEST_TEMPLATE/issue_template.md)

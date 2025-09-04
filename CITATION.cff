@@ -1,0 +1,31 @@
+cff-version: 1.2.0
+message: "If you use GraSP in your projects, please cite it as below."
+authors:
+- family-names: Pradhan
+  given-names: Bidyapati
+- family-names: Dasgupta
+  given-names: Sriram
+- family-names: Saha
+  given-names: Amit Kumar
+- family-names: Anustoop
+  given-names: Omkar
+- family-names: Puttagunta
+  given-names: Sriram
+- family-names: Mittal
+  given-names: Vipul
+- family-names: Gopal
+  given-names: Sarda
+title: "GraSP, an open-source GRAph-oriented Synthetic data generation Pipeline"
+version: 1.0
+date-released: TBD
+url: "https://servicenow.github.io/grasp"
+repository-code: "https://github.com/ServiceNow/grasp"
+license: TBD
+identifiers:
+  - type: doi
+    value: TBD (can be retrieved after repo is public)
+preferred-citation:
+  identifiers:
+  - type: url
+    value: "arXiv:2508.15432"
+    description: "The arXiv preprint of the paper"

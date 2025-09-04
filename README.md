@@ -2,6 +2,10 @@
   <img width=30% src="resources/images/grasp_logo.png">
 
   <h1>GRASP: GRAph-oriented Synthetic data generation Pipeline</h1>
+
+<a href="http://arxiv.org/abs/2508.15432">
+    <img src="https://img.shields.io/badge/arXiv-2508.15432-blue.svg" alt="arXiv"></a>
+<br>
 </div>
 
 
@@ -279,6 +283,58 @@ For a **complete reference** of all YAML configuration options, node/edge types,
 👉 **See the [Graph Configuration Guide](docs/graph_config_guide.md)**
 
 ---
+
+### Repo Structure
+
+```bash
+├── .github
+│   └── GitHub configuration and workflows
+├── apps
+│   └── Application layer and UI components
+├── docs
+│   └── User documentation and guides
+├── grasp  # Core library implementation
+│   ├── config
+│   │   └── Configuration files and settings
+│   ├── configuration
+│   │   └── Configuration loading and management
+│   ├── core
+│   │   └── Core framework components and execution engine
+│   ├── data
+│   │   └── Data handling utilities
+│   ├── data_mapper
+│   │   └── Data transformation and mapping
+│   ├── exceptions
+│   │   └── Custom exception definitions
+│   ├── logger
+│   │   └── Logging system and adapters
+│   ├── models
+│   │   └── Model configuration and factories
+│   ├── nodes
+│   │   └── Node builders for programmatic workflows
+│   ├── processors
+│   │   └── Data processing and output generation
+│   ├── recipes
+│   │   └── Pre-built workflow templates
+│   ├── tasks
+│   │   └── Example task configurations
+│   ├── utils
+│   │   └── Core utilities and helper functions
+│   ├── validators
+│   │   └── Schema validation and type checking
+│   └── workflow
+│       └── High-level workflow builder interface
+├── resources
+│   └── Static resources and assets
+├── tests
+│   └── Unit and integration tests
+└── tools
+    └── Development tools and CLI utilities
+```
+
+## Contact
+
+To contact us, join our channel or send us an [email](grasp_team@servicenow.com)!
 
 ## License
 
