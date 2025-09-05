@@ -67,7 +67,7 @@ output_config:
         - category: "Coding"
           subcategory: ""
     annotation_type:
-      value: [ "mistral-large" ]
+      value: [ "gpt4o" ]
     language:
       value: "en"
     tags:

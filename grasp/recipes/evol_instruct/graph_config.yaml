@@ -11,7 +11,7 @@ graph_config:
         - user: |
             {evol_instruct_final_prompt}
       model:      
-        name: gpt-4o-mini
+        name: gpt-4o
         parameters:          
           temperature: 1.0
 

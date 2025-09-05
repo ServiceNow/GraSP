@@ -1,5 +1,8 @@
 # DPO Samples Task using Multi-LLM Node
 
+> **Key Features**:
+> `multi-LLM processing`, `response evaluation`, `parallel model inference`, `quality rating`, `structured output schemas`
+
 ## Introduction
 
 The DPO (Direct Preference Optimization) Samples task is designed to generate and evaluate multiple model responses to the same prompt, then rate them based on quality. This task demonstrates how to use multiple LLMs in parallel, evaluate their outputs using a judge model, and collect structured responses across different quality buckets for training data generation.

@@ -19,7 +19,7 @@ graph_config:
   nodes:
     evol_text:
       node_type: subgraph
-      subgraph: recipes.evol_instruct
+      subgraph: grasp.recipes.evol_instruct
     query_llm:
       node_type: llm
       prompt:

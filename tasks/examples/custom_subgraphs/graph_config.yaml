@@ -1,5 +1,18 @@
 graph_config:
   nodes:
+    generate_question:
+      node_type: subgraph
+      subgraph: tasks.examples.custom_subgraphs.generate_question_subgraph
+      node_config_map:
+        paraphrase_question:
+            output_keys: rephrased_text
+            prompt_placeholder_map:
+              p: prompt
+            model:
+                name: gpt-4o
+                parameters:
+                  temperature: 1.0
+
     generate_answer:
       node_type: llm
       prompt:
@@ -11,12 +24,12 @@ graph_config:
         - user: |
             {rephrased_text}
       model:
-        name: gpt4o
+        name: gpt-4o
         parameters:
           temperature: 0.1
 
     critique_answer:
-      pre_process: tasks.mbpp.code_generation.task_executor.critique_answer_node_pre_process
+      pre_process: tasks.examples.custom_subgraphs.task_executor.critique_answer_node_pre_process
       node_type: llm
       output_role: user
       prompt:
@@ -32,17 +45,19 @@ graph_config:
             
             TEST CASES: {test_list}
       model:
-        name: gpt4o
+        name: gpt-4o
         parameters:
           temperature: 1.0
 
   edges:
     - from: START
+      to: generate_question
+    - from: generate_question
       to: generate_answer
     - from: generate_answer
       to: critique_answer
     - from: critique_answer
-      condition: tasks.mbpp.code_generation.task_executor.should_continue
+      condition: tasks.examples.custom_subgraphs.task_executor.should_continue
       path_map:
         END: END
         generate_answer: generate_answer

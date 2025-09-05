@@ -25,7 +25,7 @@ graph_config:
         - user: |
             QUESTION: {p}. Write the program in python.
       model:
-        name: gpt4o
+        name: gpt4
         parameters:
           temperature: 0.1
 

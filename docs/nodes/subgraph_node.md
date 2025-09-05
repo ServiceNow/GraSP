@@ -9,7 +9,7 @@ You can include a subgraph in your main graph and customize the configuration of
 #### Subgraph Definition (`generate_question` subgraph)
 
 ```yaml
-# Example: tasks/subgraph_examples/subgraphs/generate_question.yaml
+# Example: tasks/examples/custom_subgraphs/generate_question_subgraph/graph_config.yaml
 graph_config:
   nodes:
     persona_sampler:
@@ -51,7 +51,7 @@ graph_config:
 nodes:
   generate_question:
     node_type: subgraph
-    subgraph: tasks.subgraph_examples.subgraphs.generate_question
+    subgraph: tasks.examples.custom_subgraphs.generate_question_subgraph
     node_config_map:
       paraphrase_question:
         output_keys: rephrased_text

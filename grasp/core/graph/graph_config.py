@@ -202,7 +202,7 @@ class GraphConfig:
                 override_config = node_config.get("node_config_map", {})
 
                 # Load the subgraph config and pass the overrides.
-                subgraph_path = utils.get_file_in_dir(
+                subgraph_path = utils.get_file_in_task_dir(
                     node_config.get("subgraph"), "graph_config.yaml"
                 )
                 full_prefix = (

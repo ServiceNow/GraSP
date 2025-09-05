@@ -6,8 +6,8 @@ A brief overview of what this PR does. Explain the purpose and context.
 - Relates to #<issue-number>
 
 ## Impacted Features:
-	- Feature 1
-	- Feature 2
+- Feature 1
+- Feature 2
 
 ## How to Test
 Steps for reviewers to verify functionality:

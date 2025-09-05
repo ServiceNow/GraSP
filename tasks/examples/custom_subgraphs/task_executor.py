@@ -114,7 +114,7 @@ class TaskExecutor(BaseTaskExecutor):
             "original_question": state.get("prompt", ""),
             "rephrased_text": state["rephrased_text"],
             "taxonomy": [{"category": "Coding", "subcategory": ""}],
-            "annotation_type": ["mistral-large"],
+            "annotation_type": ["gpt-4o"],
             "language": ["en"],
             "tags": ["mbpp", "reannotate", "self-critique"],
         }
