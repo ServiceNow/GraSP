@@ -5,7 +5,7 @@ Data handling API for GraSP workflows with full framework integration.
 import os
 import json
 import tempfile
-from typing import Union, Dict, Any, List, Optional
+from typing import Union, Any, Optional
 from pathlib import Path
 
 try:
@@ -28,15 +28,15 @@ except ImportError:
 class DataSource:
     """Data source abstraction with full framework integration."""
 
-    def __init__(self, config: Dict[str, Any]):
+    def __init__(self, config: dict[str, Any]):
         self._config = config
 
-    def to_config(self) -> Dict[str, Any]:
+    def to_config(self) -> dict[str, Any]:
         """Return the configuration dict."""
         return self._config
 
     @classmethod
-    def memory(cls, data: List[Dict[str, Any]]) -> "DataSource":
+    def memory(cls, data: list[dict[str, Any]]) -> "DataSource":
         """Create in-memory data source from list."""
         temp_file = tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False)
         with temp_file as f:
@@ -97,7 +97,7 @@ class DataSource:
         return cls(config)
 
     def add_transformation(
-        self, transform: str, params: Optional[Dict[str, Any]] = None
+        self, transform: str, params: Optional[dict[str, Any]] = None
     ) -> "DataSource":
         """Add data transformation."""
         if "transformations" not in self._config:
@@ -111,7 +111,7 @@ class DataSource:
         return self
 
     def add_shard(
-        self, regex: str = "*", index: Optional[List[int]] = None
+        self, regex: str = "*", index: Optional[list[int]] = None
     ) -> "DataSource":
         """Add shard configuration."""
         shard_config = {"regex": regex}
@@ -125,10 +125,10 @@ class DataSource:
 class DataSink:
     """Data sink abstraction with full framework integration."""
 
-    def __init__(self, config: Dict[str, Any]):
+    def __init__(self, config: dict[str, Any]):
         self._config = config
 
-    def to_config(self) -> Dict[str, Any]:
+    def to_config(self) -> dict[str, Any]:
         """Return the configuration dict."""
         return self._config
 
@@ -177,22 +177,22 @@ class DataSourceFactory:
     """Factory for creating data source configurations with framework integration."""
 
     @staticmethod
-    def from_file(path: Union[str, Path], **kwargs) -> Dict[str, Any]:
+    def from_file(path: Union[str, Path], **kwargs) -> dict[str, Any]:
         """Create file data source configuration."""
         return DataSource.disk(path, **kwargs).to_config()
 
     @staticmethod
-    def from_huggingface(repo_id: str, **kwargs) -> Dict[str, Any]:
+    def from_huggingface(repo_id: str, **kwargs) -> dict[str, Any]:
         """Create HuggingFace data source configuration."""
         return DataSource.huggingface(repo_id, **kwargs).to_config()
 
     @staticmethod
-    def from_list(data: List[Dict[str, Any]], **kwargs) -> Dict[str, Any]:
+    def from_list(data: list[dict[str, Any]], **kwargs) -> dict[str, Any]:
         """Create in-memory data source configuration."""
         return DataSource.memory(data).to_config()
 
     @staticmethod
-    def from_iterable_dataset(dataset, **kwargs) -> Dict[str, Any]:
+    def from_iterable_dataset(dataset, **kwargs) -> dict[str, Any]:
         """Create configuration for HuggingFace IterableDataset."""
         if CORE_DATA_AVAILABLE:
             # Use framework's dataset handling
@@ -210,12 +210,12 @@ class DataSinkFactory:
     """Factory for creating data sink configurations with framework integration."""
 
     @staticmethod
-    def to_file(path: Union[str, Path], **kwargs) -> Dict[str, Any]:
+    def to_file(path: Union[str, Path], **kwargs) -> dict[str, Any]:
         """Create file data sink configuration."""
         return DataSink.disk(path, **kwargs).to_config()
 
     @staticmethod
-    def to_huggingface(repo_id: str, **kwargs) -> Dict[str, Any]:
+    def to_huggingface(repo_id: str, **kwargs) -> dict[str, Any]:
         """Create HuggingFace data sink configuration."""
         return DataSink.huggingface(repo_id, **kwargs).to_config()
 
@@ -223,10 +223,10 @@ class DataSinkFactory:
 # Enhanced convenience functions with framework features
 def from_file(
     path: Union[str, Path],
-    transformations: Optional[List[Dict[str, Any]]] = None,
-    shard: Optional[Dict[str, Any]] = None,
+    transformations: Optional[list[dict[str, Any]]] = None,
+    shard: Optional[dict[str, Any]] = None,
     **kwargs
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Create a data source from a file with optional transformations and sharding."""
     source = DataSource.disk(path, **kwargs)
 
@@ -242,10 +242,10 @@ def from_file(
 
 def from_huggingface(
     repo_id: str,
-    transformations: Optional[List[Dict[str, Any]]] = None,
-    shard: Optional[Dict[str, Any]] = None,
+    transformations: Optional[list[dict[str, Any]]] = None,
+    shard: Optional[dict[str, Any]] = None,
     **kwargs
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Create a data source from HuggingFace dataset with optional transformations and sharding."""
     source = DataSource.huggingface(repo_id, **kwargs)
 
@@ -259,17 +259,17 @@ def from_huggingface(
     return source.to_config()
 
 
-def from_list(data: List[Dict[str, Any]], **kwargs) -> Dict[str, Any]:
+def from_list(data: list[dict[str, Any]], **kwargs) -> dict[str, Any]:
     """Create a data source from a Python list."""
     return DataSourceFactory.from_list(data, **kwargs)
 
 
-def to_file(path: Union[str, Path], **kwargs) -> Dict[str, Any]:
+def to_file(path: Union[str, Path], **kwargs) -> dict[str, Any]:
     """Create a data sink to a file."""
     return DataSinkFactory.to_file(path, **kwargs)
 
 
-def to_huggingface(repo_id: str, **kwargs) -> Dict[str, Any]:
+def to_huggingface(repo_id: str, **kwargs) -> dict[str, Any]:
     """Create a data sink to HuggingFace dataset."""
     return DataSinkFactory.to_huggingface(repo_id, **kwargs)
 

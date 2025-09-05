@@ -1,4 +1,4 @@
-from typing import Dict, Any, Union, List, Optional, Callable
+from typing import Any, Union, Optional, Callable
 
 
 from ..models import ModelConfigBuilder
@@ -13,7 +13,7 @@ class BaseNodeBuilder:
         self._config = {"node_type": node_type}
         self._messages = []
 
-    def build(self) -> Dict[str, Any]:
+    def build(self) -> dict[str, Any]:
         """Build the final node configuration."""
         if self._messages:
             self._config["prompt"] = self._messages
@@ -37,7 +37,7 @@ class BaseNodeBuilder:
 class LLMNodeBuilder(BaseNodeBuilder):
     """Builder for LLM nodes with full feature support."""
 
-    def __init__(self, name: str, model: Union[str, Dict[str, Any]]):
+    def __init__(self, name: str, model: Union[str, dict[str, Any]]):
         super().__init__(name, "llm")
 
         if isinstance(model, str):
@@ -45,7 +45,7 @@ class LLMNodeBuilder(BaseNodeBuilder):
         else:
             self._config["model"] = ModelConfigBuilder.validate_config(model)
 
-    def prompt(self, prompt: Union[str, List[Dict[str, str]]]) -> "LLMNodeBuilder":
+    def prompt(self, prompt: Union[str, list[dict[str, str]]]) -> "LLMNodeBuilder":
         """Set prompt configuration directly."""
         if isinstance(prompt, str):
             self._config["prompt"] = [{"user": prompt}]
@@ -77,7 +77,7 @@ class LLMNodeBuilder(BaseNodeBuilder):
         return self
 
     def multimodal_message(
-        self, role: str, content: List[Dict[str, Any]]
+        self, role: str, content: list[dict[str, Any]]
     ) -> "LLMNodeBuilder":
         """Add multimodal message with complex content."""
         self._messages.append({role: content})
@@ -120,7 +120,7 @@ class LLMNodeBuilder(BaseNodeBuilder):
         return self
 
     def structured_output(
-        self, schema: Union[str, Dict[str, Any]], **kwargs
+        self, schema: Union[str, dict[str, Any]], **kwargs
     ) -> "LLMNodeBuilder":
         """Configure structured output."""
         structured_config = {
@@ -137,7 +137,7 @@ class LLMNodeBuilder(BaseNodeBuilder):
 class AgentNodeBuilder(BaseNodeBuilder):
     """Builder for Agent nodes with full feature support."""
 
-    def __init__(self, name: str, model: Union[str, Dict[str, Any]]):
+    def __init__(self, name: str, model: Union[str, dict[str, Any]]):
         super().__init__(name, "agent")
 
         if isinstance(model, str):
@@ -145,7 +145,7 @@ class AgentNodeBuilder(BaseNodeBuilder):
         else:
             self._config["model"] = ModelConfigBuilder.validate_config(model)
 
-    def prompt(self, prompt: Union[str, List[Dict[str, str]]]) -> "AgentNodeBuilder":
+    def prompt(self, prompt: Union[str, list[dict[str, str]]]) -> "AgentNodeBuilder":
         """Set prompt configuration directly."""
         if isinstance(prompt, str):
             self._config["prompt"] = [{"user": prompt}]
@@ -176,12 +176,12 @@ class AgentNodeBuilder(BaseNodeBuilder):
         self._messages.append({role: content})
         return self
 
-    def tools(self, tools: List[Any]) -> "AgentNodeBuilder":
+    def tools(self, tools: list[Any]) -> "AgentNodeBuilder":
         """Set agent tools."""
         self._config["tools"] = tools
         return self
 
-    def inject_system_messages(self, messages: Dict[int, str]) -> "AgentNodeBuilder":
+    def inject_system_messages(self, messages: dict[int, str]) -> "AgentNodeBuilder":
         """Set system message injection configuration."""
         self._config["inject_system_messages"] = messages
         return self
@@ -216,7 +216,7 @@ class MultiLLMNodeBuilder(BaseNodeBuilder):
         self._config["models"] = {}
 
     def add_model(
-        self, label: str, model: Union[str, Dict[str, Any]]
+        self, label: str, model: Union[str, dict[str, Any]]
     ) -> "MultiLLMNodeBuilder":
         """Add a model to the multi-LLM configuration."""
         if isinstance(model, str):
@@ -225,7 +225,7 @@ class MultiLLMNodeBuilder(BaseNodeBuilder):
             self._config["models"][label] = ModelConfigBuilder.validate_config(model)
         return self
 
-    def prompt(self, prompt: Union[str, List[Dict[str, str]]]) -> "MultiLLMNodeBuilder":
+    def prompt(self, prompt: Union[str, list[dict[str, str]]]) -> "MultiLLMNodeBuilder":
         """Set prompt configuration directly."""
         if isinstance(prompt, str):
             self._config["prompt"] = [{"user": prompt}]
@@ -296,8 +296,8 @@ class WeightedSamplerNodeBuilder(BaseNodeBuilder):
     def add_attribute(
         self,
         name: str,
-        values: Union[List[Any], Dict[str, Any]],
-        weights: Optional[List[float]] = None,
+        values: Union[list[Any], dict[str, Any]],
+        weights: Optional[list[float]] = None,
     ) -> "WeightedSamplerNodeBuilder":
         """Add an attribute to sample."""
         attr_config = {"values": values}
@@ -314,7 +314,7 @@ class SubgraphNodeBuilder(BaseNodeBuilder):
         super().__init__(name, "subgraph")
         self._config["subgraph"] = subgraph
 
-    def node_config_map(self, config_map: Dict[str, Any]) -> "SubgraphNodeBuilder":
+    def node_config_map(self, config_map: dict[str, Any]) -> "SubgraphNodeBuilder":
         """Set node configuration overrides."""
         self._config["node_config_map"] = config_map
         return self

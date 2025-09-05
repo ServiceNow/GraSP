@@ -4,7 +4,7 @@ import yaml
 import uuid
 import tempfile
 import shutil
-from typing import Union, Dict, Any, Optional, List, Callable
+from typing import Union, Any, Optional, Callable
 from pathlib import Path
 
 
@@ -16,6 +16,13 @@ try:
         OutputConfig,
         DataSourceType,
         OutputType,
+    )
+    from grasp.core.graph.grasp_state import GraspState
+    from grasp.core.graph.grasp_message import GraspMessage
+    from grasp.core.graph.functions.node_processor import (
+        NodePreProcessor,
+        NodePostProcessor,
+        NodePostProcessorWithState,
     )
     from argparse import Namespace
     from grasp.utils import utils as utils, constants
@@ -31,36 +38,74 @@ except ImportError:
 from grasp.exceptions import GraSPError, ConfigurationError, ExecutionError
 from grasp.models import ModelConfigBuilder
 
+# Import node builders with conditional availability
+try:
+    from grasp.nodes import (
+        LLMNodeBuilder,
+        AgentNodeBuilder,
+        MultiLLMNodeBuilder,
+        LambdaNodeBuilder,
+        WeightedSamplerNodeBuilder,
+        SubgraphNodeBuilder,
+    )
+
+    NODE_BUILDERS_AVAILABLE = True
+except ImportError:
+    NODE_BUILDERS_AVAILABLE = False
+
+# Import data utilities with conditional availability
+try:
+    from grasp.data import DataSource, DataSink
+
+    DATA_UTILS_AVAILABLE = True
+except ImportError:
+    DATA_UTILS_AVAILABLE = False
+
 
 class Workflow:
     """
-    High-level workflow builder with full GraSP feature support.
+    Unified workflow builder supporting all GraSP paradigms and use cases.
+
+    Supports:
+    - Fluent API building with custom processors
+    - Existing YAML task execution
+    - Explicit graph building with node builders
+    - Direct function references and lambda processing
+    - Complex conditional workflows and edge routing
 
     Examples:
-        >>> import grasp
-        >>>
-        >>> # Simple workflow with resumable execution
-        >>> workflow = grasp.Workflow()
-        >>> workflow.source("data.json") \\
-        >>>         .llm("gpt-4", "Rewrite: {text}") \\
+        # Fluent API with custom processors
+        >>> workflow = Workflow("my_workflow")
+        >>> result = workflow.source(data) \\
+        >>>         .llm("gpt-4", "Create haiku: {text}",
+        >>>              post_process=TextExtractionPostProcessor) \\
         >>>         .sink("output.json") \\
-        >>>         .resumable(True) \\
         >>>         .run()
-        >>>
-        >>> # Advanced workflow with multimodal, quality, and OASST
-        >>> workflow = grasp.Workflow() \\
-        >>>         .source({"type": "hf", "repo_id": "dataset/name"}) \\
-        >>>         .llm(model_config, "Process: {text} {image}") \\
-        >>>         .quality_tagging(True) \\
-        >>>         .oasst_mapping(True) \\
-        >>>         .sink("output.json") \\
-        >>>         .run(num_records=1000)
+
+        # Execute existing YAML task
+        >>> workflow = Workflow("tasks/examples/glaive_code_assistant")
+        >>> workflow.run(num_records=1)
+
+        # Explicit graph building
+        >>> graph = create_graph("complex_workflow")
+        >>> summarizer = graph.add_llm_node("summarizer", "gpt-4o") \\
+        >>>                   .system_message("Create summaries") \\
+        >>>                   .user_message("Summarize: {text}")
+        >>> graph.sequence("START", "summarizer", "END")
+        >>> results = graph.run()
+
+        # Direct function references
+        >>> workflow.source(data) \\
+        >>>         .lambda_func(TextCleanerLambda, output="cleaned") \\
+        >>>         .llm("gpt-4", "Process: {cleaned}",
+        >>>              pre_process=PromptTemplatePreProcessor) \\
+        >>>         .run()
     """
 
     def __init__(self, name: Optional[str] = None):
         self.name = name or f"workflow_{uuid.uuid4().hex[:8]}"
         self._config = {
-            "graph_config": {"nodes": {}, "edges": []},
+            "graph_config": {"nodes": {}, "edges": [], "graph_properties": {}},
             "data_config": {},
             "output_config": {},
         }
@@ -68,7 +113,10 @@ class Workflow:
         self._last_node = None
         self._temp_files = []
         self._overrides = {}
+        self._node_builders = {}
+        self._messages = []
 
+        # Feature support flags
         self._supports_subgraphs = True
         self._supports_multimodal = True
         self._supports_resumable = True
@@ -76,7 +124,7 @@ class Workflow:
         self._supports_oasst = True
 
     def source(
-        self, source: Union[str, Path, Dict[str, Any], List[Dict[str, Any]]]
+        self, source: Union[str, Path, dict[str, Any], list[dict[str, Any]], DataSource]
     ) -> "Workflow":
         """Add data source with full framework support."""
         if isinstance(source, (str, Path)):
@@ -102,13 +150,15 @@ class Workflow:
                 }
             else:
                 source_config = source
+        elif DATA_UTILS_AVAILABLE and isinstance(source, DataSource):
+            source_config = source.to_config()
         else:
             raise ValueError(f"Unsupported source type: {type(source)}")
 
         self._config["data_config"]["source"] = source_config
         return self
 
-    def sink(self, sink: Union[str, Path, Dict[str, Any]]) -> "Workflow":
+    def sink(self, sink: Union[str, Path, dict[str, Any], DataSink]) -> "Workflow":
         """Add data sink with full framework support."""
         if isinstance(sink, (str, Path)):
             output_path = str(sink)
@@ -122,6 +172,8 @@ class Workflow:
             }
         elif isinstance(sink, dict):
             sink_config = sink
+        elif DATA_UTILS_AVAILABLE and isinstance(sink, DataSink):
+            sink_config = sink.to_config()
         else:
             raise ValueError(f"Unsupported sink type: {type(sink)}")
 
@@ -129,15 +181,17 @@ class Workflow:
         return self
 
     def llm(
-            self,
-            model: Union[str, Dict[str, Any]],
-            prompt: Union[str, List[Dict[str, str]]],
-            output: str = "messages",
-            pre_process: Union[str, Callable] = None,
-            post_process: Union[str, Callable] = None,
-            **kwargs,
+        self,
+        model: Union[str, dict[str, Any]],
+        prompt: Union[str, list[dict[str, str]]],
+        output: str = "messages",
+        pre_process: Union[str, Callable, NodePreProcessor] = None,
+        post_process: Union[
+            str, Callable, NodePostProcessor, NodePostProcessorWithState
+        ] = None,
+        **kwargs,
     ) -> "Workflow":
-        """Add LLM node with full feature support."""
+        """Add LLM node with full feature support including custom processors."""
         node_name = self._generate_node_name("llm")
 
         if isinstance(model, str):
@@ -162,15 +216,34 @@ class Workflow:
         if kwargs.get("chat_history"):
             node_config["chat_history"] = True
 
+        # Handle pre-processors
         if pre_process:
-            if callable(pre_process):
+            if isinstance(pre_process, type) and issubclass(
+                pre_process, NodePreProcessor
+            ):
+                # Class reference - convert to string path
+                node_config["pre_process"] = (
+                    f"{pre_process.__module__}.{pre_process.__name__}"
+                )
+            elif callable(pre_process):
                 node_config["pre_process"] = self._callable_to_string_path(pre_process)
             else:
                 node_config["pre_process"] = pre_process
 
+        # Handle post-processors
         if post_process:
-            if callable(post_process):
-                node_config["post_process"] = self._callable_to_string_path(post_process)
+            if isinstance(post_process, type) and (
+                issubclass(post_process, NodePostProcessor)
+                or issubclass(post_process, NodePostProcessorWithState)
+            ):
+                # Class reference - convert to string path
+                node_config["post_process"] = (
+                    f"{post_process.__module__}.{post_process.__name__}"
+                )
+            elif callable(post_process):
+                node_config["post_process"] = self._callable_to_string_path(
+                    post_process
+                )
             else:
                 node_config["post_process"] = post_process
 
@@ -180,11 +253,10 @@ class Workflow:
         self._add_node_with_edge(node_name, node_config)
         return self
 
-
     def multi_llm(
         self,
-        models: Dict[str, Union[str, Dict[str, Any]]],
-        prompt: Union[str, List[Dict[str, str]]],
+        models: dict[str, Union[str, dict[str, Any]]],
+        prompt: Union[str, list[dict[str, str]]],
         **kwargs,
     ) -> "Workflow":
         """Add Multi-LLM node."""
@@ -218,7 +290,11 @@ class Workflow:
         return self
 
     def agent(
-        self, model: Union[str, Dict[str, Any]], tools: List[Any], prompt: str, **kwargs
+        self,
+        model: Union[str, dict[str, Any]],
+        tools: list[Any],
+        prompt: Union[str, list[dict[str, str]]],
+        **kwargs,
     ) -> "Workflow":
         """Add agent node with full feature support."""
         node_name = self._generate_node_name("agent")
@@ -244,26 +320,17 @@ class Workflow:
         self._add_node_with_edge(node_name, node_config)
         return self
 
-    @staticmethod
-    def _callable_to_string_path(func: Union[str, Callable]) -> str:
-        """Convert callable to string path for YAML serialization."""
-        if callable(func):
-            if hasattr(func, '__module__') and hasattr(func, '__name__'):
-                return f"{func.__module__}.{func.__name__}"
-            elif hasattr(func, '__class__'):
-                return f"{func.__class__.__module__}.{func.__class__.__name__}"
-            else:
-                class_name = func.__class__.__name__
-                return f"__main__.{class_name}"
-        return func
-
     def lambda_func(
-        self, func: Union[str, Callable], output: str = "result", **kwargs
+        self, func: Union[str, Callable, type], output: str = "result", **kwargs
     ) -> "Workflow":
-        """Add lambda function node."""
+        """Add lambda function node supporting direct function/class references."""
         node_name = self._generate_node_name("lambda")
 
-        if callable(func):
+        # Handle different types of function references
+        if isinstance(func, type):
+            # Class reference
+            func_path = f"{func.__module__}.{func.__name__}"
+        elif callable(func):
             func_path = self._callable_to_string_path(func)
         else:
             func_path = func
@@ -278,7 +345,7 @@ class Workflow:
         return self
 
     def weighted_sampler(
-        self, attributes: Dict[str, Dict[str, Any]], **kwargs
+        self, attributes: dict[str, dict[str, Any]], **kwargs
     ) -> "Workflow":
         """Add weighted sampler node."""
         node_name = self._generate_node_name("weighted_sampler")
@@ -289,7 +356,7 @@ class Workflow:
         return self
 
     def subgraph(
-        self, subgraph_name: str, node_config_map: Optional[Dict[str, Any]] = None
+        self, subgraph_name: str, node_config_map: Optional[dict[str, Any]] = None
     ) -> "Workflow":
         """Add subgraph node."""
         node_name = self._generate_node_name("subgraph")
@@ -302,6 +369,115 @@ class Workflow:
         self._add_node_with_edge(node_name, node_config)
         return self
 
+    def add_node(self, name: str, node_config: dict[str, Any]) -> "Workflow":
+        """Add node with explicit configuration."""
+        self._config["graph_config"]["nodes"][name] = node_config
+        return self
+
+    def add_llm_node(
+        self, name: str, model: Union[str, dict[str, Any]]
+    ) -> "LLMNodeBuilder":
+        """Add LLM node and return builder for chaining."""
+        if not NODE_BUILDERS_AVAILABLE:
+            raise GraSPError("Node builders not available.")
+
+        builder = LLMNodeBuilder(name, model)
+        self._node_builders[name] = builder
+        return builder
+
+    def add_agent_node(
+        self, name: str, model: Union[str, dict[str, Any]]
+    ) -> "AgentNodeBuilder":
+        """Add agent node and return builder for chaining."""
+        if not NODE_BUILDERS_AVAILABLE:
+            raise GraSPError("Node builders not available.")
+
+        builder = AgentNodeBuilder(name, model)
+        self._node_builders[name] = builder
+        return builder
+
+    def add_multi_llm_node(self, name: str) -> "MultiLLMNodeBuilder":
+        """Add multi-LLM node and return builder for chaining."""
+        if not NODE_BUILDERS_AVAILABLE:
+            raise GraSPError("Node builders not available.")
+
+        builder = MultiLLMNodeBuilder(name)
+        self._node_builders[name] = builder
+        return builder
+
+    def add_lambda_node(
+        self, name: str, func: Union[str, Callable]
+    ) -> "LambdaNodeBuilder":
+        """Add lambda node and return builder for chaining."""
+        if not NODE_BUILDERS_AVAILABLE:
+            raise GraSPError("Node builders not available.")
+
+        builder = LambdaNodeBuilder(name, func)
+        self._node_builders[name] = builder
+        return self
+
+    def add_weighted_sampler_node(self, name: str) -> "WeightedSamplerNodeBuilder":
+        """Add weighted sampler node and return builder for chaining."""
+        if not NODE_BUILDERS_AVAILABLE:
+            raise GraSPError("Node builders not available.")
+
+        builder = WeightedSamplerNodeBuilder(name)
+        self._node_builders[name] = builder
+        return builder
+
+    def add_subgraph_node(self, name: str, subgraph: str) -> "SubgraphNodeBuilder":
+        """Add subgraph node and return builder for chaining."""
+        if not NODE_BUILDERS_AVAILABLE:
+            raise GraSPError("Node builders not available.")
+
+        builder = SubgraphNodeBuilder(name, subgraph)
+        self._node_builders[name] = builder
+        return builder
+
+    def add_edge(self, from_node: str, to_node: str) -> "Workflow":
+        """Add simple edge between nodes."""
+        edge_config = {"from": from_node, "to": to_node}
+        self._config["graph_config"]["edges"].append(edge_config)
+        return self
+
+    def add_conditional_edge(
+        self, from_node: str, condition: Union[str, Callable], path_map: dict[str, str]
+    ) -> "Workflow":
+        """Add conditional edge with path mapping."""
+        if callable(condition):
+            condition_path = f"{condition.__module__}.{condition.__name__}"
+        else:
+            condition_path = condition
+
+        edge_config = {
+            "from": from_node,
+            "condition": condition_path,
+            "path_map": path_map,
+        }
+        self._config["graph_config"]["edges"].append(edge_config)
+        return self
+
+    def sequence(self, *nodes: str) -> "Workflow":
+        """Connect nodes in sequence. Adds START and END nodes if not already added."""
+        if nodes[0] != "START":
+            self.add_edge("START", nodes[0])
+        if nodes[-1] != "END":
+            self.add_edge(nodes[-1], "END")
+        for i in range(len(nodes) - 1):
+            self.add_edge(nodes[i], nodes[i + 1])
+        return self
+
+    def build(self) -> "Workflow":
+        """Build workflow by applying all node builders and return self for execution."""
+        # Apply all node builders to finalize configuration
+        for name, builder in self._node_builders.items():
+            node_config = builder.build()
+            self._config["graph_config"]["nodes"][name] = node_config
+
+        # Clear builders since they're now applied
+        self._node_builders.clear()
+        return self
+
     def resumable(self, enabled: bool = True) -> "Workflow":
         """Enable/disable resumable execution."""
         if "data_config" not in self._config:
@@ -310,7 +486,7 @@ class Workflow:
         return self
 
     def quality_tagging(
-        self, enabled: bool = True, config: Optional[Dict[str, Any]] = None
+        self, enabled: bool = True, config: Optional[dict[str, Any]] = None
     ) -> "Workflow":
         """Enable quality tagging."""
         if "output_config" not in self._config:
@@ -333,7 +509,7 @@ class Workflow:
         return self
 
     def oasst_mapping(
-        self, enabled: bool = True, config: Optional[Dict[str, Any]] = None
+        self, enabled: bool = True, config: Optional[dict[str, Any]] = None
     ) -> "Workflow":
         """Enable OASST mapping."""
         if "output_config" not in self._config:
@@ -356,7 +532,7 @@ class Workflow:
                 }
         return self
 
-    def output_generator(self, generator: Union[str, Dict[str, Any]]) -> "Workflow":
+    def output_generator(self, generator: Union[str, dict[str, Any]]) -> "Workflow":
         """Set output generator."""
         if "output_config" not in self._config:
             self._config["output_config"] = {}
@@ -374,21 +550,7 @@ class Workflow:
         self._config["data_config"]["id_column"] = column
         return self
 
-    def _callable_to_string_path(self, func: Callable) -> str:
-        """Convert a callable to its string path."""
-        if hasattr(func, "__module__") and hasattr(func, "__name__"):
-            return f"{func.__module__}.{func.__name__}"
-
-        elif hasattr(func, "__class__"):
-            return f"{func.__class__.__module__}.{func.__class__.__name__}"
-
-        elif hasattr(func, "__module__") and hasattr(func, "__qualname__"):
-            return f"{func.__module__}.{func.__qualname__}"
-
-        else:
-            raise ValueError(f"Cannot determine string path for callable: {func}")
-
-    def transformations(self, transforms: List[Dict[str, Any]]) -> "Workflow":
+    def transformations(self, transforms: list[dict[str, Any]]) -> "Workflow":
         """Add data transformations."""
         if "data_config" not in self._config:
             self._config["data_config"] = {}
@@ -406,14 +568,14 @@ class Workflow:
         self._config["data_config"]["source"]["transformations"] = transformations
         return self
 
-    def graph_properties(self, properties: Dict[str, Any]) -> "Workflow":
+    def graph_properties(self, properties: dict[str, Any]) -> "Workflow":
         """Set graph properties like chat conversation type."""
         if "graph_config" not in self._config:
             self._config["graph_config"] = {}
-        if "graph_state" not in self._config["graph_config"]:
-            self._config["graph_config"]["graph_state"] = {}
+        if "graph_properties" not in self._config["graph_config"]:
+            self._config["graph_config"]["graph_properties"] = {}
 
-        self._config["graph_config"]["graph_state"].update(properties)
+        self._config["graph_config"]["graph_properties"].update(properties)
         return self
 
     def chat_conversation(
@@ -423,6 +585,79 @@ class Workflow:
         return self.graph_properties(
             {"chat_conversation": conv_type, "chat_history_window_size": window_size}
         )
+
+    def disable_default_transforms(self) -> "Workflow":
+        """Disable default transformations."""
+        if "data_config" not in self._config:
+            self._config["data_config"] = {}
+        if "source" not in self._config["data_config"]:
+            self._config["data_config"]["source"] = {}
+
+        self._config["data_config"]["source"]["transformations"] = []
+        return self
+
+    def enable_resumable(self, enabled: bool = True) -> "Workflow":
+        """Enable resumable execution (backward compatibility)."""
+        return self.resumable(enabled)
+
+    def enable_quality_tagging(
+        self, enabled: bool = True, config: Optional[dict[str, Any]] = None
+    ) -> "Workflow":
+        """Enable quality tagging (backward compatibility)."""
+        return self.quality_tagging(enabled, config)
+
+    def enable_oasst_mapping(
+        self, enabled: bool = True, config: Optional[dict[str, Any]] = None
+    ) -> "Workflow":
+        """Enable OASST mapping (backward compatibility)."""
+        return self.oasst_mapping(enabled, config)
+
+    def set_output_generator(self, generator: Union[str, dict[str, Any]]) -> "Workflow":
+        """Set output generator (backward compatibility)."""
+        return self.output_generator(generator)
+
+    def set_chat_conversation(
+        self, conv_type: str = "multiturn", window_size: int = 5
+    ) -> "Workflow":
+        """Configure chat conversation settings (backward compatibility)."""
+        return self.chat_conversation(conv_type, window_size)
+
+    def override(self, path: str, value: Any) -> "Workflow":
+        """
+        Universal override method using dot notation paths.
+
+        Examples:
+            .override("graph_config.nodes.llm_1.model.parameters.temperature", 0.9)
+            .override("graph_config.nodes.llm_1.prompt.0.user", "New prompt: {text}")
+            .override("graph_config.nodes.llm_1.model.name", "gpt-4o")
+            .override("data_config.source.repo_id", "new/dataset")
+        """
+        if not hasattr(self, "_overrides"):
+            self._overrides = {}
+
+        self._overrides[path] = value
+        return self
+
+    def override_model(
+        self, node_name: str, model_name: str = None, **params
+    ) -> "Workflow":
+        """Convenient method for model overrides."""
+        if model_name:
+            self.override(f"graph_config.nodes.{node_name}.model.name", model_name)
+
+        for param, value in params.items():
+            self.override(
+                f"graph_config.nodes.{node_name}.model.parameters.{param}", value
+            )
+
+        return self
+
+    def override_prompt(
+        self, node_name: str, role: str, content: str, index: int = 0
+    ) -> "Workflow":
+        """Convenient method for prompt overrides."""
+        self.override(f"graph_config.nodes.{node_name}.prompt.{index}.{role}", content)
+        return self
 
     def run(
         self,
@@ -434,6 +669,9 @@ class Workflow:
         """Execute workflow with full framework feature support."""
         if not CORE_AVAILABLE:
             raise GraSPError("Core framework not available")
+
+        # Apply node builders before execution
+        self.build()
 
         has_source = "source" in self._config.get("data_config", {})
         has_nodes = len(self._config["graph_config"]["nodes"]) > 0
@@ -451,89 +689,13 @@ class Workflow:
                 "Incomplete workflow. Add both source and processing nodes."
             )
 
-    def override(self, path: str, value: Any) -> "Workflow":
-        """
-        Universal override method using dot notation paths.
+    def save_config(self, path: Union[str, Path]) -> None:
+        """Save workflow configuration as YAML file."""
+        # Apply all node builders first
+        self.build()
 
-        Examples:
-            .override("nodes.llm_1.model.parameters.temperature", 0.9)
-            .override("nodes.llm_1.prompt.0.user", "New prompt: {text}")
-            .override("nodes.llm_1.model.name", "gpt-4o")
-            .override("data_config.source.repo_id", "new/dataset")
-            .override("nodes.critique_answer.model.parameters", {"temperature": 0.1, "max_tokens": 2000})
-        """
-        if not hasattr(self, '_overrides'):
-            self._overrides = {}
-
-        self._overrides[path] = value
-        return self
-
-    def override_model(self, node_name: str, model_name: str = None, **params) -> "Workflow":
-        """Convenient method for model overrides."""
-        if model_name:
-            self.override(f"graph_config.nodes.{node_name}.model.name", model_name)
-
-        for param, value in params.items():
-            self.override(f"graph_config.nodes.{node_name}.model.parameters.{param}", value)
-
-        return self
-
-    def override_prompt(self, node_name: str, role: str, content: str, index: int = 0) -> "Workflow":
-        """Convenient method for prompt overrides."""
-        self.override(f"graph_config.nodes.{node_name}.prompt.{index}.{role}", content)
-        return self
-
-    def _apply_overrides(self, config: Dict[str, Any]) -> Dict[str, Any]:
-        """Apply all overrides to the loaded configuration."""
-        if not hasattr(self, '_overrides') or not self._overrides:
-            return config
-
-        import copy
-        modified_config = copy.deepcopy(config)
-
-        for path, value in self._overrides.items():
-            self._set_nested_value(modified_config, path, value)
-
-        logger.info(f"Applied {len(self._overrides)} configuration overrides")
-        return modified_config
-
-    def _set_nested_value(self, config: Dict[str, Any], path: str, value: Any) -> None:
-        """Set a nested value using dot notation path."""
-        keys = path.split('.')
-        current = config
-
-        # Navigate through all keys except the last one
-        for i, key in enumerate(keys[:-1]):
-            if key.isdigit():
-                key = int(key)
-                if not isinstance(current, list):
-                    # Build the current path for better error reporting
-                    current_path = '.'.join(keys[:i+1])
-                    raise ValueError(f"Expected list at path {current_path}, got {type(current)}")
-                # Extend list if needed
-                while key >= len(current):
-                    current.append({})
-                current = current[key]
-            else:
-                if key not in current:
-                    current[key] = {}
-                elif not isinstance(current[key], (dict, list)):
-                    # If the key exists but is not a container, replace it
-                    current[key] = {}
-                current = current[key]
-
-        # Set the final value
-        final_key = keys[-1]
-        if final_key.isdigit():
-            final_key = int(final_key)
-            if not isinstance(current, list):
-                raise ValueError(f"Expected list for index {final_key} at path {path}")
-            # Extend list if needed
-            while final_key >= len(current):
-                current.append(None)
-            current[final_key] = value
-        else:
-            current[final_key] = value
+        with open(path, "w") as f:
+            yaml.dump(self._config, f, default_flow_style=False)
 
     def _execute_existing_task(
         self,
@@ -559,7 +721,8 @@ class Workflow:
         logger.info(f"Executing existing YAML task with full features: {task_name}")
 
         import yaml
-        with open(config_file, 'r') as f:
+
+        with open(config_file, "r") as f:
             original_config = yaml.safe_load(f)
 
         modified_config = self._apply_overrides(original_config)
@@ -597,22 +760,12 @@ class Workflow:
                 logger.error(f"Task context initialization failed for '{task_name}'")
             raise ExecutionError(f"Failed to execute task '{task_name}': {e}")
 
-    def disable_default_transforms(self) -> "Workflow":
-        """Disable default transformations."""
-        if "data_config" not in self._config:
-            self._config["data_config"] = {}
-        if "source" not in self._config["data_config"]:
-            self._config["data_config"]["source"] = {}
-
-        self._config["data_config"]["source"]["transformations"] = []
-        return self
-
     def _execute_programmatic_workflow(
-            self,
-            num_records: Optional[int],
-            start_index: int,
-            output_dir: Optional[str],
-            **kwargs,
+        self,
+        num_records: Optional[int],
+        start_index: int,
+        output_dir: Optional[str],
+        **kwargs,
     ) -> Any:
         """Execute programmatic workflow with full framework features."""
         try:
@@ -661,13 +814,13 @@ class Workflow:
 
             result = executor.execute()
 
-
             output_file = None
             if self._config.get("data_config", {}).get("sink", {}).get("file_path"):
                 output_file = self._config["data_config"]["sink"]["file_path"]
             elif args.output_dir:
                 import glob
-                pattern = os.path.join(args.output_dir, f"*output*.json*")
+
+                pattern = os.path.join(args.output_dir, "*output*.json*")
                 output_files = glob.glob(pattern)
                 if output_files:
                     output_file = output_files[0]
@@ -689,12 +842,79 @@ class Workflow:
         finally:
             self._cleanup()
 
+    def _apply_overrides(self, config: dict[str, Any]) -> dict[str, Any]:
+        """Apply all overrides to the loaded configuration."""
+        if not hasattr(self, "_overrides") or not self._overrides:
+            return config
+
+        import copy
+
+        modified_config = copy.deepcopy(config)
+
+        for path, value in self._overrides.items():
+            self._set_nested_value(modified_config, path, value)
+
+        logger.info(f"Applied {len(self._overrides)} configuration overrides")
+        return modified_config
+
+    def _set_nested_value(self, config: dict[str, Any], path: str, value: Any) -> None:
+        """Set a nested value using dot notation path."""
+        keys = path.split(".")
+        current = config
+
+        # Navigate through all keys except the last one
+        for i, key in enumerate(keys[:-1]):
+            if key.isdigit():
+                key = int(key)
+                if not isinstance(current, list):
+                    # Build the current path for better error reporting
+                    current_path = ".".join(keys[: i + 1])
+                    raise ValueError(
+                        f"Expected list at path {current_path}, got {type(current)}"
+                    )
+                # Extend list if needed
+                while key >= len(current):
+                    current.append({})
+                current = current[key]
+            else:
+                if key not in current:
+                    current[key] = {}
+                elif not isinstance(current[key], (dict, list)):
+                    # If the key exists but is not a container, replace it
+                    current[key] = {}
+                current = current[key]
+
+        # Set the final value
+        final_key = keys[-1]
+        if final_key.isdigit():
+            final_key = int(final_key)
+            if not isinstance(current, list):
+                raise ValueError(f"Expected list for index {final_key} at path {path}")
+            # Extend list if needed
+            while final_key >= len(current):
+                current.append(None)
+            current[final_key] = value
+        else:
+            current[final_key] = value
+
+    def _callable_to_string_path(self, func: Union[str, Callable]) -> str:
+        """Convert callable to string path for YAML serialization."""
+        if callable(func):
+            if hasattr(func, "__module__") and hasattr(func, "__name__"):
+                return f"{func.__module__}.{func.__name__}"
+            elif hasattr(func, "__class__"):
+                return f"{func.__class__.__module__}.{func.__class__.__name__}"
+            else:
+                class_name = func.__class__.__name__
+                return f"__main__.{class_name}"
+        return func
+
     def _detect_file_format(self, file_path: str) -> str:
         """Detect file format from extension."""
         ext = Path(file_path).suffix.lower()
         return ext[1:] if ext in [".json", ".jsonl", ".csv", ".parquet"] else "json"
 
-    def _create_temp_file(self, data: List[Dict[str, Any]]) -> str:
+    def _create_temp_file(self, data: list[dict[str, Any]]) -> str:
         """Create temporary file for data."""
         temp_file = tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False)
         with temp_file as f:
@@ -707,7 +927,7 @@ class Workflow:
         self._node_counter += 1
         return f"{node_type}_{self._node_counter}"
 
-    def _add_node_with_edge(self, node_name: str, node_config: Dict[str, Any]) -> None:
+    def _add_node_with_edge(self, node_name: str, node_config: dict[str, Any]) -> None:
         """Add node and create edges."""
         self._config["graph_config"]["nodes"][node_name] = node_config
 
@@ -744,189 +964,9 @@ class Workflow:
         self._cleanup()
 
 
-class Graph:
-    """Advanced graph builder with full GraSP feature support."""
-
-    def __init__(self, name: Optional[str] = None):
-        self.name = name or f"graph_{uuid.uuid4().hex[:8]}"
-        self._workflow = Workflow(self.name)
-        self._node_builders = {}
-
-    def add_node(self, name: str, node_config: Dict[str, Any]) -> "Graph":
-        """Add node with explicit configuration."""
-        self._workflow._config["graph_config"]["nodes"][name] = node_config
-        return self
-
-    def add_llm_node(
-        self, name: str, model: Union[str, Dict[str, Any]]
-    ) -> "LLMNodeBuilder":
-        """Add LLM node and return builder for chaining."""
-        from ..nodes import LLMNodeBuilder
-
-        builder = LLMNodeBuilder(name, model)
-        self._node_builders[name] = builder
-        return builder
-
-    def add_agent_node(
-        self, name: str, model: Union[str, Dict[str, Any]]
-    ) -> "AgentNodeBuilder":
-        """Add agent node and return builder for chaining."""
-        from ..nodes import AgentNodeBuilder
-
-        builder = AgentNodeBuilder(name, model)
-        self._node_builders[name] = builder
-        return builder
-
-    def add_multi_llm_node(self, name: str) -> "MultiLLMNodeBuilder":
-        """Add multi-LLM node and return builder for chaining."""
-        from ..nodes import MultiLLMNodeBuilder
-
-        builder = MultiLLMNodeBuilder(name)
-        self._node_builders[name] = builder
-        return builder
-
-    def add_lambda_node(
-        self, name: str, func: Union[str, Callable]
-    ) -> "LambdaNodeBuilder":
-        """Add lambda node and return builder for chaining."""
-        from ..nodes import LambdaNodeBuilder
-
-        builder = LambdaNodeBuilder(name, func)
-        self._node_builders[name] = builder
-        return builder
-
-    def add_weighted_sampler_node(self, name: str) -> "WeightedSamplerNodeBuilder":
-        """Add weighted sampler node and return builder for chaining."""
-        from ..nodes import WeightedSamplerNodeBuilder
-
-        builder = WeightedSamplerNodeBuilder(name)
-        self._node_builders[name] = builder
-        return builder
-
-    def add_subgraph_node(self, name: str, subgraph: str) -> "SubgraphNodeBuilder":
-        """Add subgraph node and return builder for chaining."""
-        from ..nodes import SubgraphNodeBuilder
-
-        builder = SubgraphNodeBuilder(name, subgraph)
-        self._node_builders[name] = builder
-        return builder
-
-    def add_edge(self, from_node: str, to_node: str) -> "Graph":
-        """Add simple edge."""
-        edge_config = {"from": from_node, "to": to_node}
-        self._workflow._config["graph_config"]["edges"].append(edge_config)
-        return self
-
-    def add_conditional_edge(
-        self, from_node: str, condition: Union[str, Callable], path_map: Dict[str, str]
-    ) -> "Graph":
-        """Add conditional edge."""
-        if callable(condition):
-            condition_path = f"{condition.__module__}.{condition.__name__}"
-        else:
-            condition_path = condition
-
-        edge_config = {
-            "from": from_node,
-            "condition": condition_path,
-            "path_map": path_map,
-        }
-        self._workflow._config["graph_config"]["edges"].append(edge_config)
-        return self
-
-    def sequence(self, *nodes: str) -> "Graph":
-        """Connect nodes in sequence."""
-        for i in range(len(nodes) - 1):
-            self.add_edge(nodes[i], nodes[i + 1])
-        return self
-
-    def set_source(self, source) -> "Graph":
-        """Set data source using DataSource object or config."""
-        if hasattr(source, "to_config"):
-            source_config = source.to_config()
-        else:
-            source_config = source
-        self._workflow._config["data_config"]["source"] = source_config
-        return self
-
-    def set_sink(self, sink) -> "Graph":
-        """Set data sink using DataSink object or config."""
-        if hasattr(sink, "to_config"):
-            sink_config = sink.to_config()
-        else:
-            sink_config = sink
-        self._workflow._config["data_config"]["sink"] = sink_config
-        return self
-
-    def enable_resumable(self, enabled: bool = True) -> "Graph":
-        """Enable resumable execution."""
-        self._workflow.resumable(enabled)
-        return self
-
-    def enable_quality_tagging(
-        self, enabled: bool = True, config: Optional[Dict[str, Any]] = None
-    ) -> "Graph":
-        """Enable quality tagging."""
-        self._workflow.quality_tagging(enabled, config)
-        return self
-
-    def enable_oasst_mapping(
-        self, enabled: bool = True, config: Optional[Dict[str, Any]] = None
-    ) -> "Graph":
-        """Enable OASST mapping."""
-        self._workflow.oasst_mapping(enabled, config)
-        return self
-
-    def set_output_generator(self, generator: Union[str, Dict[str, Any]]) -> "Graph":
-        """Set output generator."""
-        self._workflow.output_generator(generator)
-        return self
-
-    def set_chat_conversation(
-        self, conv_type: str = "multiturn", window_size: int = 5
-    ) -> "Graph":
-        """Configure chat conversation settings."""
-        self._workflow.chat_conversation(conv_type, window_size)
-        return self
-
-    def build(self) -> "ExecutableGraph":
-        """Build executable graph from current configuration."""
-        # Apply all node builders
-        for name, builder in self._node_builders.items():
-            node_config = builder.build()
-            self._workflow._config["graph_config"]["nodes"][name] = node_config
-
-        return ExecutableGraph(self._workflow)
-
-    def run(self, **kwargs) -> Any:
-        """Build and execute graph immediately."""
-        return self.build().run(**kwargs)
-
-    def save_config(self, path: Union[str, Path]) -> None:
-        """Save as YAML config."""
-        # Build first to include all node configurations
-        for name, builder in self._node_builders.items():
-            node_config = builder.build()
-            self._workflow._config["graph_config"]["nodes"][name] = node_config
-
-        with open(path, "w") as f:
-            yaml.dump(self._workflow._config, f, default_flow_style=False)
+def create_graph(name: str) -> Workflow:
+    """Factory function to create a new workflow builder (backward compatibility)."""
+    return Workflow(name)
 
 
-class ExecutableGraph:
-    """Executable graph wrapper with full feature support."""
-
-    def __init__(self, workflow: Workflow):
-        self._workflow = workflow
-
-    def run(self, **kwargs) -> Any:
-        """Execute the graph with full framework features."""
-        return self._workflow.run(**kwargs)
-
-
-def create_graph(name: str) -> Graph:
-    """Factory function to create a new graph builder."""
-    return Graph(name)
-
-
-__all__ = ["Workflow", "Graph", "ExecutableGraph", "create_graph"]
+__all__ = ["Workflow", "create_graph"]

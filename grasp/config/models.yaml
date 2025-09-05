@@ -75,6 +75,6 @@ qwen3_1.7b:
   # URL should be defined at .env file as GRASP_QWEN3_1.7B_URL. auth_token is not needed
   # Default URL for ollama is http://localhost:11434
   hf_chat_template_model_id: Qwen/Qwen3-1.7B
-  post_process: core.models.model_postprocessor.RemoveThinkData
+  post_process: grasp.core.models.model_postprocessor.RemoveThinkData
   parameters:
     temperature: 0.8

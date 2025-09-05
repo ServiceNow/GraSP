@@ -3,7 +3,7 @@ data_config:
     type: "disk"
     file_path: "tasks/examples/structured_output_with_multi_llm/dpo_samples/dpo_conversation.json"
     transformations:
-      - transform: grasp.tasks.examples.structured_output_with_multi_llm.dpo_samples.data_transform.ExtractUserPromptTransform
+      - transform: tasks.examples.structured_output_with_multi_llm.dpo_samples.data_transform.ExtractUserPromptTransform
         params: {}
       - transform: tasks.examples.structured_output_with_multi_llm.dpo_samples.data_transform.ExtractResponseScaleTransform
         params: {}
@@ -40,7 +40,7 @@ graph_config:
             temperature: 0.7
             max_tokens: 2000
           structured_output:
-            schema: "core.models.structured_output.schemas_factory.SimpleResponse"
+            schema: "grasp.core.models.structured_output.schemas_factory.SimpleResponse"
         gpt-4o-mini:
           name: gpt-4o-mini
           parameters:

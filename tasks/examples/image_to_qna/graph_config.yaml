@@ -6,7 +6,7 @@ data_config:
     split: "train"
     streaming: true
     transformations:
-      - transform: grasp.tasks.examples.image_to_qna.task_executor.ImagesMetadata
+      - transform: tasks.examples.image_to_qna.task_executor.ImagesMetadata
         params:
           image_field: "images"
       - transform: grasp.processors.data_transform.AddNewFieldTransform
@@ -20,8 +20,8 @@ data_config:
 graph_config:
   nodes:
     extract_text:
-      pre_process: grasp.tasks.examples.image_to_qna.task_executor.ImagesPreProcessor
-      post_process: grasp.tasks.examples.image_to_qna.task_executor.ExtractTextPostProcessor
+      pre_process: tasks.examples.image_to_qna.task_executor.ImagesPreProcessor
+      post_process: tasks.examples.image_to_qna.task_executor.ExtractTextPostProcessor
       node_type: llm
       prompt:
         - system:
@@ -49,7 +49,7 @@ graph_config:
           temperature: 0.3
     update_loop_count:
       node_type: lambda
-      lambda: grasp.tasks.examples.image_to_qna.task_executor.UpdateLoopCount
+      lambda: tasks.examples.image_to_qna.task_executor.UpdateLoopCount
 
     # When OCR is done, generate question and answers with below nodes
     # input parameter: documents (combine text of all images)
@@ -58,10 +58,10 @@ graph_config:
       output_keys:
         - token_count
         - documents
-      lambda: grasp.tasks.examples.image_to_qna.task_executor.TokenChecker
+      lambda: tasks.examples.image_to_qna.task_executor.TokenChecker
     question_generator_node:
       node_type: llm
-      post_process: grasp.tasks.examples.image_to_qna.task_executor.QuestionExtractProcessor
+      post_process: tasks.examples.image_to_qna.task_executor.QuestionExtractProcessor
       output_keys:
         - generated_questions
         - question_response_text
@@ -134,8 +134,8 @@ graph_config:
           temperature: 0.3
     answer_generator_node:
       node_type: llm
-      pre_process: grasp.tasks.examples.image_to_qna.task_executor.SetCurrentQuestion
-      post_process: grasp.tasks.examples.image_to_qna.task_executor.AnswerExtractProcessor
+      pre_process: tasks.examples.image_to_qna.task_executor.SetCurrentQuestion
+      post_process: tasks.examples.image_to_qna.task_executor.AnswerExtractProcessor
       output_keys:
         - generated_responses
         - answers
@@ -167,19 +167,19 @@ graph_config:
           temperature: 0.3
     update_question_counter:
       node_type: lambda
-      lambda: grasp.tasks.examples.image_to_qna.task_executor.UpdateQuestionCounter
+      lambda: tasks.examples.image_to_qna.task_executor.UpdateQuestionCounter
   edges:
     - from: START
       to: extract_text
     - from: extract_text
       to: update_loop_count
     - from: update_loop_count
-      condition: grasp.examples.image_to_qna.task_executor.ImageLoopChecker
+      condition: tasks.examples.image_to_qna.task_executor.ImageLoopChecker
       path_map:
         token_checker: token_checker
         extract_text: extract_text
     - from: token_checker
-      condition: grasp.tasks.examples.image_to_qna.task_executor.ShouldGenerateQuestion
+      condition: tasks.examples.image_to_qna.task_executor.ShouldGenerateQuestion
       path_map:
         END: END
         generate_question: question_generator_node
@@ -188,7 +188,7 @@ graph_config:
     - from: answer_generator_node
       to: update_question_counter
     - from: update_question_counter
-      condition: grasp.tasks.examples.image_to_qna.task_executor.QuestionLoopChecker
+      condition: tasks.examples.image_to_qna.task_executor.QuestionLoopChecker
       path_map:
         END: END
         generate_more_answers: answer_generator_node

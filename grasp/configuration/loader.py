@@ -1,6 +1,6 @@
 import os
 import yaml
-from typing import Union, Dict, Any
+from typing import Union, Any
 from pathlib import Path
 
 try:
@@ -16,7 +16,7 @@ except ImportError:
 class ConfigLoader:
     """Loads existing GraSP YAML configurations and converts them to library objects."""
 
-    def load(self, config_path: Union[str, Path, Dict[str, Any]]) -> Dict[str, Any]:
+    def load(self, config_path: Union[str, Path, dict[str, Any]]) -> dict[str, Any]:
         """Load configuration from file or dictionary."""
         if isinstance(config_path, dict):
             return config_path
@@ -41,7 +41,7 @@ class ConfigLoader:
 
         return config
 
-    def load_and_create(self, config_path: Union[str, Path, Dict[str, Any]]):
+    def load_and_create(self, config_path: Union[str, Path, dict[str, Any]]):
         """Load config and create appropriate Workflow or Graph object."""
         config = self.load(config_path)
 
