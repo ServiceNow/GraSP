@@ -1,7 +1,7 @@
 data_config:
   source:
     type: "disk"
-    file_path: "grasp/tasks/data_quality/llm_based/sample.json"
+    file_path: "grasp/internal_tasks/data_quality/llm_based/sample.json"
 
     transformations:
       - transform: grasp.processors.data_transform.AddNewFieldTransform
@@ -10,7 +10,7 @@ data_config:
             category: "Generic"
             scores: {}
             metadata: {}
-      - transform: grasp.tasks.data_quality.llm_based.task_executor.ConvertToQuestionAnswerTransform
+      - transform: grasp.internal_tasks.data_quality.llm_based.task_executor.ConvertToQuestionAnswerTransform
 
 
 
@@ -50,7 +50,7 @@ graph_config:
         parameters:
           max_tokens: 1000
           temperature: 0
-      post_process: grasp.tasks.data_quality.llm_based.task_executor.DataQualityQuestionQualityPostProcessor
+      post_process: grasp.internal_tasks.data_quality.llm_based.task_executor.DataQualityQuestionQualityPostProcessor
 
     generic_prompt:
       node_type: llm
@@ -108,7 +108,7 @@ graph_config:
         parameters:
           max_tokens: 4096
           temperature: 0
-      post_process: grasp.tasks.data_quality.llm_based.task_executor.GenericPromptPostProcessor
+      post_process: grasp.internal_tasks.data_quality.llm_based.task_executor.GenericPromptPostProcessor
 
     math_prompt:
       node_type: llm
@@ -163,7 +163,7 @@ graph_config:
         parameters:
           max_tokens: 4096
           temperature: 0
-      post_process: grasp.tasks.data_quality.llm_based.task_executor.GenericPromptPostProcessor
+      post_process: grasp.internal_tasks.data_quality.llm_based.task_executor.GenericPromptPostProcessor
 
     reasoning_prompt:
       node_type: llm
@@ -224,7 +224,7 @@ graph_config:
         parameters:
           max_tokens: 4096
           temperature: 0
-      post_process: grasp.tasks.data_quality.llm_based.task_executor.GenericPromptPostProcessor
+      post_process: grasp.internal_tasks.data_quality.llm_based.task_executor.GenericPromptPostProcessor
 
     coding_prompt:
       node_type: llm
@@ -291,7 +291,7 @@ graph_config:
         parameters:
           max_tokens: 4096
           temperature: 0
-      post_process: grasp.tasks.data_quality.llm_based.task_executor.GenericPromptPostProcessor
+      post_process: grasp.internal_tasks.data_quality.llm_based.task_executor.GenericPromptPostProcessor
 
     instruction_following_prompt:
       node_type: llm
@@ -349,7 +349,7 @@ graph_config:
         parameters:
           max_tokens: 4096
           temperature: 0
-      post_process: grasp.tasks.data_quality.llm_based.task_executor.GenericPromptPostProcessor
+      post_process: grasp.internal_tasks.data_quality.llm_based.task_executor.GenericPromptPostProcessor
 
     open_qa_prompt:
       node_type: llm
@@ -404,7 +404,7 @@ graph_config:
         parameters:
           max_tokens: 4096
           temperature: 0
-      post_process: grasp.tasks.data_quality.llm_based.task_executor.GenericPromptPostProcessor
+      post_process: grasp.internal_tasks.data_quality.llm_based.task_executor.GenericPromptPostProcessor
 
     closed_qa_prompt:
       node_type: llm
@@ -459,13 +459,13 @@ graph_config:
         parameters:
           max_tokens: 4096
           temperature: 0
-      post_process: grasp.tasks.data_quality.llm_based.task_executor.GenericPromptPostProcessor
+      post_process: grasp.internal_tasks.data_quality.llm_based.task_executor.GenericPromptPostProcessor
 
   edges:
     - from: START
       to: extract_question_quality
     - from: extract_question_quality
-      condition: grasp.tasks.data_quality.llm_based.task_executor.DataQualityCategoryCondition
+      condition: grasp.internal_tasks.data_quality.llm_based.task_executor.DataQualityCategoryCondition
       path_map:
         generic: generic_prompt
         math_solving: math_prompt
@@ -490,7 +490,7 @@ graph_config:
       to: END
 
 output_config:
-  generator: grasp.tasks.data_quality.llm_based.task_executor.DataQualityOutputGenerator
+  generator: grasp.internal_tasks.data_quality.llm_based.task_executor.DataQualityOutputGenerator
   output_map:
     id:
       from: "id"

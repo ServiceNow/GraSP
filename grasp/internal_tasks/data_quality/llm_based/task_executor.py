@@ -122,7 +122,7 @@ class DataQualityCategoryCondition(EdgeCondition):
         # Retrieve the category from state and check against allowed categories
         category = state.get("category", "").lower().replace(" ", "_")
         prompt_config = load_prompt_config(
-            utils.get_file_in_dir("tasks.data_quality.llm_based", "prompt_config.yaml")
+            utils.get_file_in_dir("internal_tasks.data_quality.llm_based", "prompt_config.yaml")
         )
 
         if category not in prompt_config:

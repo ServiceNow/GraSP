@@ -80,8 +80,8 @@ class MetadataTaggingDataTransform(DataTransform):
         """
         # Load taxonomy metadata and prepare category descriptions
         sub_tasks = self.get_data(
-            utils.get_file_in_task_dir(
-                "data_quality.metadata_tagging.taxonomy", "taxonomy.json"
+            utils.get_file_in_dir(
+                "internal_tasks.data_quality.metadata_tagging.taxonomy", "taxonomy.json"
             )
         )
         task_category = {cat: sub_tasks[cat]["Description"] for cat in sub_tasks}

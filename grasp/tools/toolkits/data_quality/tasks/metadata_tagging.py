@@ -2,7 +2,7 @@ import os
 import logging
 from argparse import Namespace
 from grasp.utils import utils
-from grasp.tasks.data_quality.metadata_tagging.filter_tags import (
+from grasp.internal_tasks.data_quality.metadata_tagging.filter_tags import (
     PipelineConfig,
     extract_instag_stats,
 )
@@ -44,13 +44,15 @@ class MetadataTaggingTask:
         graph_config_dict = self._load_and_update_graph_config(data_config)
         BaseTaskExecutor(args, graph_config_dict).execute()
 
-        output_file = os.path.join(self.output_dir, "metadata_tagging_output.jsonl")
+        output_file = os.path.join(self.output_dir, "metadata_tagging_output", "output.jsonl")
         if not os.path.exists(output_file):
-            output_file = os.path.join(self.output_dir, "metadata_tagging_output.json")
+            output_file = os.path.join(self.output_dir, "metadata_tagging_output", "output.json")
 
         # Run filter_tags on the output file if it exists
         if os.path.exists(output_file):
             self._run_filter_tags(output_file)
+        else:
+            logger.warning(f"Output file {output_file} does not exist. Skipping tags normalization and filtering.")
 
         return output_file
 
@@ -62,7 +64,7 @@ class MetadataTaggingTask:
             Namespace: A namespace object containing task arguments.
         """
         args = {
-            "task": "data_quality.metadata_tagging",
+            "task": "grasp.internal_tasks.data_quality.metadata_tagging",
             "start_index": 0,
             "num_records": self.num_records,
             "run_name": "metadata_tagging",
@@ -97,7 +99,7 @@ class MetadataTaggingTask:
         """
         graph_config = utils.load_yaml_file(
             filepath=utils.get_file_in_task_dir(
-                "data_quality.metadata_tagging", "graph_config.yaml"
+                "grasp.internal_tasks.data_quality.metadata_tagging", "graph_config.yaml"
             )
         )
         transformations = (

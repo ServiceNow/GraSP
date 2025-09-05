@@ -1,10 +1,10 @@
 data_config:
   source:
     type: "disk"
-    file_path: "grasp/tasks/examples/glaive_code_assistant/test_output.json"
+    file_path: "tasks/examples/glaive_code_assistant/test_output.json"
 
     transformations:
-      - transform: grasp.tasks.data_quality.metadata_tagging.task_executor.MetadataTaggingDataTransform
+      - transform: grasp.internal_tasks.data_quality.metadata_tagging.task_executor.MetadataTaggingDataTransform
         params:
           data_type: "sft"
 
@@ -12,8 +12,8 @@ graph_config:
   nodes:
     extract_category:
      node_type: llm
-     post_process: grasp.tasks.data_quality.metadata_tagging.task_executor.ExtractCategoryPostProcess
-     pre_process: grasp.tasks.data_quality.metadata_tagging.task_executor.ExtractCategoryPreProcess
+     post_process: grasp.internal_tasks.data_quality.metadata_tagging.task_executor.ExtractCategoryPostProcess
+     pre_process: grasp.internal_tasks.data_quality.metadata_tagging.task_executor.ExtractCategoryPreProcess
      prompt:
        - system: |
            You are a classification AI that strictly follows given instructions and categorizes data accurately. Your primary task is to select the most appropriate task category from a provided list based on User Question and Assistant Response.
@@ -104,7 +104,7 @@ graph_config:
         name: gpt-4o
         parameters:
           temperature: 0.1
-      post_process: grasp.tasks.data_quality.metadata_tagging.task_executor.ExtractTagsPostProcess
+      post_process: grasp.internal_tasks.data_quality.metadata_tagging.task_executor.ExtractTagsPostProcess
 
   edges:
     - from: START
@@ -115,7 +115,7 @@ graph_config:
       to: END
 
 output_config:
-  generator: grasp.tasks.data_quality.metadata_tagging.task_executor.MetaTaggingOutputGenerator
+  generator: grasp.internal_tasks.data_quality.metadata_tagging.task_executor.MetaTaggingOutputGenerator
   output_map:
     id:
       from: "id"

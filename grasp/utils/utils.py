@@ -232,11 +232,17 @@ def delete_file(filepath: str):
     if os.path.exists(filepath):
         os.remove(filepath)
 
+def get_task_dir(task: str):
+    task_dir = "/".join(task.split("."))
+    return task_dir or f"{task_dir}/"
 
-@deprecated("Use get_file_in_task_dir instead")
 def get_file_in_task_dir(task: str, file: str):
     task_dir = "/".join(task.split("."))
     return os.path.join(task_dir, file) or f"{task_dir}/{file}"
+
+def is_valid_task_name(task: str):
+    task_dir = "/".join(task.split("."))
+    return os.path.exists(f"{task_dir}/graph_config.yaml")
 
 
 def get_file_in_dir(dot_walk_path: str, file: str):
