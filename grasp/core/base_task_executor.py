@@ -597,18 +597,27 @@ class BaseTaskExecutor(ABC):
             # since the output file will also be big and its efficient to append to jsonl
             out_file_type = "jsonl" if num_records_total > 25000 else "json"
             run_name_prefix = f"{self.args.run_name}_" if self.args.run_name else ""
+            # Create a subdirectory for outputs with the name format
+            output_subdir_name = f"{run_name_prefix}output{ts_suffix}"
+            
             if self.output_dir:
                 if not os.path.exists(self.output_dir):
                     os.makedirs(self.output_dir)
-                out_file = (
-                    self.output_dir
-                    + f"/{run_name_prefix}output{ts_suffix}.{out_file_type}"
-                )
+                
+                output_subdir_path = os.path.join(self.output_dir, output_subdir_name)
+                if not os.path.exists(output_subdir_path):
+                    os.makedirs(output_subdir_path)
+                
+                out_file = os.path.join(output_subdir_path, f"output.{out_file_type}")
             else:
-                out_file = utils.get_file_in_task_dir(
-                    self.args.task,
-                    f"{run_name_prefix}output{ts_suffix}.{out_file_type}",
-                )
+                # Get the task directory path
+                task_dir = utils.get_task_dir(self.task_name)
+
+                output_subdir_path = os.path.join(task_dir, output_subdir_name)
+                if not os.path.exists(output_subdir_path):
+                    os.makedirs(output_subdir_path)
+
+                out_file = os.path.join(output_subdir_path, f"output.{out_file_type}")
         if not self.resumable and os.path.exists(out_file):
             logger.info(
                 f"Deleting existing output file since resumable=False: {out_file}"

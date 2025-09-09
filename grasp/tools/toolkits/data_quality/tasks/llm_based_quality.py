@@ -38,10 +38,10 @@ class LLMBasedQualityTask:
 
         BaseTaskExecutor(args, graph_config_dict).execute()
 
-        output_file = os.path.join(self.output_dir, "llm_based_quality_output.jsonl")
+        output_file = os.path.join(self.output_dir, "llm_based_quality_output", "output.jsonl")
         if os.path.exists(output_file):
             return output_file
-        return os.path.join(self.output_dir, "llm_based_quality_output.json")
+        return os.path.join(self.output_dir, "llm_based_quality_output", "output.json")
 
     def _construct_args(self) -> Namespace:
         """
@@ -51,7 +51,7 @@ class LLMBasedQualityTask:
             Namespace: A namespace object containing task arguments.
         """
         args = {
-            "task": "data_quality.llm_based",
+            "task": "grasp.internal_tasks.data_quality.llm_based",
             "start_index": 0,
             "num_records": self.num_records,
             "run_name": "llm_based_quality",
@@ -101,7 +101,7 @@ class LLMBasedQualityTask:
         """
         graph_config = utils.load_yaml_file(
             filepath=utils.get_file_in_task_dir(
-                "data_quality.llm_based", "graph_config.yaml"
+                "grasp.internal_tasks.data_quality.llm_based", "graph_config.yaml"
             )
         )
         transformations = (

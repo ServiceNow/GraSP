@@ -172,7 +172,14 @@ if __name__ == "__main__":
 
     # check models are available and normalize task name
     if not task_name.startswith("tasks."):
-        full_task_name = f"tasks.{task_name}"
+        #check if task_name is valid or "tasks.{task_name}" is valid. Whichever is valid, use that as args.task and full_task_name
+        if utils.is_valid_task_name(task_name):
+            full_task_name = task_name
+        elif utils.is_valid_task_name(f"tasks.{task_name}"):
+            full_task_name = f"tasks.{task_name}"
+        else:
+            logger.error(f"Invalid task name: {task_name}. Exiting the process.")
+            sys.exit(1)
         check_model_availability(full_task_name)
         args.task = full_task_name
         utils.current_task = full_task_name  # Set current_task to the full task name with prefix
