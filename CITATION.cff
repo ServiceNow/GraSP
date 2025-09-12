@@ -1,31 +1,49 @@
 cff-version: 1.2.0
 message: "If you use GraSP in your projects, please cite it as below."
 authors:
-- family-names: Pradhan
-  given-names: Bidyapati
-- family-names: Dasgupta
-  given-names: Surajit
-- family-names: Saha
-  given-names: Amit Kumar
-- family-names: Anustoop
-  given-names: Omkar
-- family-names: Puttagunta
-  given-names: Sriram
-- family-names: Mittal
-  given-names: Vipul
-- family-names: Gopal
-  given-names: Sarda
+  - family-names: Pradhan
+    given-names: Bidyapati
+  - family-names: Dasgupta
+    given-names: Surajit
+  - family-names: Saha
+    given-names: Amit Kumar
+  - family-names: Anustoop
+    given-names: Omkar
+  - family-names: Puttagunta
+    given-names: Sriram
+  - family-names: Mittal
+    given-names: Vipul
+  - family-names: Gopal
+    given-names: Sarda
 title: "GraSP, an open-source GRAph-oriented Synthetic data generation Pipeline"
-version: 1.0
-date-released: TBD
+version: "1.0"
+date-released: "2025-09-12"   # replace with actual release date
 url: "https://servicenow.github.io/grasp"
 repository-code: "https://github.com/ServiceNow/grasp"
-license: Apache-2.0
+license: "Apache-2.0"
+
 identifiers:
   - type: doi
-    value: TBD (can be retrieved after repo is public)
+    value: "10.0000/placeholder-doi"   # replace with real DOI when minted
+
 preferred-citation:
-  identifiers:
-  - type: url
-    value: "arXiv:2508.15432"
-    description: "The arXiv preprint of the paper"
+  type: article
+  title: "GraSP: An open-source GRAph-oriented Synthetic data generation Pipeline"
+  authors:
+    - family-names: Pradhan
+      given-names: Bidyapati
+    - family-names: Dasgupta
+      given-names: Surajit
+    - family-names: Saha
+      given-names: Amit Kumar
+    - family-names: Anustoop
+      given-names: Omkar
+    - family-names: Puttagunta
+      given-names: Sriram
+    - family-names: Mittal
+      given-names: Vipul
+    - family-names: Gopal
+      given-names: Sarda
+  year: 2025
+  doi: "10.0000/placeholder-doi"
+  url: "https://arxiv.org/abs/2508.15432"

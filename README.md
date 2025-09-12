@@ -13,6 +13,8 @@
     <img alt="Licence" src="https://img.shields.io/badge/License-Apache%202.0-blue.svg"/></a>
 
 <br>
+<br>
+<br>
 </div>
 
 
@@ -67,4 +69,4 @@ The package is licensed by ServiceNow, Inc. under the Apache 2.0 license. See [L
 ---
 
 **Questions?**  
-Open an issue or discussion! Contributions are welcome.
+Open an [issue](https://github.com/ServiceNow/GraSP/issues) or start a [discussion](https://github.com/ServiceNow/GraSP/discussions)! Contributions are welcome.
