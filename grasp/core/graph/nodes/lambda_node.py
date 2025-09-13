@@ -1,7 +1,6 @@
 from inspect import isclass
 from typing import Any
 
-from grasp.core.graph.functions.lambda_function import LambdaFunction
 from grasp.core.graph.nodes.base_node import BaseNode
 from grasp.utils import utils
 

@@ -4,7 +4,7 @@ import os
 import re
 from typing import Any, Optional
 
-import requests
+import requests  # type: ignore[import-untyped]
 from PIL import Image
 
 from grasp.logger.logger_config import logger

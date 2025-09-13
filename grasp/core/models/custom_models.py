@@ -11,13 +11,18 @@ import time
 from abc import ABC, abstractmethod
 from typing import (
     Any,
+    DefaultDict,
+    Dict,
     Optional,
+    Protocol,
+    Sequence,
     Tuple,
     Type,
+    cast,
 )
 
 import openai
-from langchain_core.messages import AIMessage, AnyMessage
+from langchain_core.messages import AIMessage, BaseMessage
 from langchain_core.output_parsers import PydanticOutputParser
 from langchain_core.prompt_values import ChatPromptValue
 from pydantic import BaseModel, ValidationError
@@ -31,7 +36,10 @@ from tenacity import (
 from transformers import AutoTokenizer
 
 import grasp.utils.constants as constants
+from grasp.core.models.client.base_client import BaseClient
 from grasp.core.models.client.client_factory import ClientFactory
+from grasp.core.models.client.http_client import HttpClient
+from grasp.core.models.client.openai_client import OpenAIClient
 from grasp.core.models.structured_output.structured_output_config import (
     StructuredOutputConfig,
 )
@@ -54,7 +62,7 @@ class BaseCustomModel(ABC):
         # Initialize structured output configuration
         structured_output_raw = model_config.get("structured_output")
         if structured_output_raw is None:
-            self.structured_output_config = {}
+            self.structured_output_config: Dict[str, Any] = {}
             key_present = False
         else:
             self.structured_output_config = structured_output_raw or {}
@@ -66,7 +74,7 @@ class BaseCustomModel(ABC):
         self.delay = model_config.get("delay", 100)
         # max_wait for 8 attempts = 2^(8-1) = 128 secs
         self.retry_attempts = model_config.get("retry_attempts", 8)
-        self.generation_params = model_config.get("parameters")
+        self.generation_params: dict[Any, Any] = model_config.get("parameters") or {}
         self.hf_chat_template_model_id = model_config.get("hf_chat_template_model_id")
         if self.hf_chat_template_model_id:
             self.tokenizer = AutoTokenizer.from_pretrained(
@@ -74,22 +82,19 @@ class BaseCustomModel(ABC):
             )
             if model_config.get("modify_tokenizer", False):
                 self._set_chat_template()
-        self.model_stats = {"resp_code_dist": {}, "errors": {}}
+        self.model_stats: Dict[str, Any] = {"resp_code_dist": {}, "errors": {}}
         # track total count for round_robin load balancing; see "_get_model_url"
         self.call_count = 0
         # track the number of requests per url for least_requests load balancing; see "_get_model_url"
-        self.url_reqs_count = collections.defaultdict(int)
+        self.url_reqs_count: DefaultDict[str, int] = collections.defaultdict(int)
         # store the timestamps to check if server is down
-        self.model_failed_response_timestamp = []
+        self.model_failed_response_timestamp: list[float] = []
         self._validate_completions_api_support()
-        self._client = None
+        self._client: BaseClient
 
-    def _set_client(self, url: str = None, auth_token: str = None, async_client: bool = True):
+    def _set_client(self, url: str, auth_token: Optional[str] = None, async_client: bool = True):
         """Get or create the client instance on demand."""
-        if self._client is None or (async_client and not hasattr(self._client, "acreate")):
-            self._client = ClientFactory.create_client(
-                self.model_config, url, auth_token, async_client
-            )
+        self._client = ClientFactory.create_client(self.model_config, url, auth_token, async_client)
 
     def _validate_completions_api_support(self) -> None:
         """
@@ -124,9 +129,6 @@ class BaseCustomModel(ABC):
             raise EnvironmentError(
                 f"Environment variable {env_var} not set, but override_tokenizer is True."
             )
-
-    def __call__(self, input: ChatPromptValue, **kwargs: Any) -> Any:
-        raise NotImplementedError("Sync call is not supported for custom models")
 
     async def __call__(self, input: ChatPromptValue, **kwargs: Any) -> Any:
         # model_url = self._get_model_url()
@@ -166,7 +168,7 @@ class BaseCustomModel(ABC):
 
     async def _handle_structured_output(
         self, input: ChatPromptValue, model_params: ModelParams, **kwargs: Any
-    ) -> Tuple[str, int]:
+    ) -> Optional[Tuple[str, int]]:
         """Handle structured output generation"""
         lock = await self._get_lock()
         # Re-entry prevention using asyncio locking
@@ -177,7 +179,7 @@ class BaseCustomModel(ABC):
                     "Structured output enabled but no valid schema found, falling back to regular generation"
                 )
                 # Return a flag to signal that regular generation should be used
-                return None, None
+                return None
 
             # Check if model supports native structured output
             if self._supports_native_structured_output():
@@ -188,7 +190,10 @@ class BaseCustomModel(ABC):
             else:
                 logger.info(f"Using fallback structured output for {self.name()}")
                 # Get response from fallback method
-                resp_text, resp_status = await self._generate_fallback_structured_output(
+                (
+                    resp_text,
+                    resp_status,
+                ) = await self._generate_fallback_structured_output(
                     input, model_params, pydantic_model, **kwargs
                 )
                 return resp_text, resp_status
@@ -220,12 +225,13 @@ class BaseCustomModel(ABC):
         logger.info("Generating fallback structured output")
         parser = PydanticOutputParser(pydantic_object=pydantic_model)
         format_instructions = parser.get_format_instructions()
-        model_url = model_params.url
 
         # Modify the prompt to include format instructions
-        modified_messages = input.messages.copy()
+        modified_messages = list(input.messages)
         if modified_messages and modified_messages[-1].content:
-            modified_messages[-1].content += f"\n\n{format_instructions}"
+            modified_messages[-1].content = (
+                str(modified_messages[-1].content) + f"\n\n{format_instructions}"
+            )
 
         modified_input = ChatPromptValue(messages=modified_messages)
 
@@ -253,7 +259,7 @@ class BaseCustomModel(ABC):
             return resp_text, 200
 
     def name(self) -> str:
-        return self.model_config["name"]
+        return cast(str, self.model_config["name"])
 
     def _get_model_params(self) -> ModelParams:
         url = self.model_config.get("url", "")
@@ -264,10 +270,10 @@ class BaseCustomModel(ABC):
 
         return_url = None
         return_auth_token = None
-        if type(url) == str:
+        if isinstance(url, str):
             return_url = url
             return_auth_token = auth_token
-        elif type(url) == list:
+        elif isinstance(url, list):
             load_balancing = self.model_config.get("load_balancing", "least_requests")
             if load_balancing == "round_robin":
                 idx = self.call_count % len(url)
@@ -276,7 +282,7 @@ class BaseCustomModel(ABC):
             elif load_balancing == "least_requests":
                 # initialize the count for each url if it is not already done
                 if not self.url_reqs_count:
-                    self.url_reqs_count = {u: 0 for u in url}
+                    self.url_reqs_count = collections.defaultdict(int, {u: 0 for u in url})
                 # find the url with least requests
                 min_value = min(self.url_reqs_count.values())
                 min_keys = [k for k, v in self.url_reqs_count.items() if v == min_value]
@@ -303,16 +309,16 @@ class BaseCustomModel(ABC):
     def _get_model_url(self) -> str:
         url = self.model_config["url"]
         return_url = None
-        if type(url) == str:
+        if isinstance(url, str):
             return_url = url
-        elif type(url) == list:
+        elif isinstance(url, list):
             load_balancing = self.model_config.get("load_balancing", "least_requests")
             if load_balancing == "round_robin":
                 return_url = url[self.call_count % len(url)]
             elif load_balancing == "least_requests":
                 # initialize the count for each url if it is not already done
                 if not self.url_reqs_count:
-                    self.url_reqs_count = {u: 0 for u in url}
+                    self.url_reqs_count = collections.defaultdict(int, {u: 0 for u in url})
                 # find the url with the least requests
                 min_value = min(self.url_reqs_count.values())
                 min_keys = [k for k, v in self.url_reqs_count.items() if v == min_value]
@@ -366,7 +372,7 @@ class BaseCustomModel(ABC):
     ) -> Tuple[str, int]:
         pass
 
-    def _ping_model(self, url, auth_token):
+    def _ping_model(self, url, auth_token) -> int:
         """
         Ping a single model
         Args:
@@ -398,11 +404,13 @@ class BaseCustomModel(ABC):
         else:
             return self._ping_model(url=self.model_config.get("url"), auth_token=auth_token)
 
-    def get_chat_formatted_text(self, chat_format_object: list[AnyMessage]) -> str:
-        chat_formatted_text = self.tokenizer.apply_chat_template(
-            utils.convert_messages_from_langchain_to_chat_format(chat_format_object),
-            tokenize=False,
-            add_generation_prompt=True,
+    def get_chat_formatted_text(self, chat_format_object: Sequence[BaseMessage]) -> str:
+        chat_formatted_text = str(
+            self.tokenizer.apply_chat_template(
+                utils.convert_messages_from_langchain_to_chat_format(chat_format_object),
+                tokenize=False,
+                add_generation_prompt=True,
+            )
         )
         logger.debug(f"Chat formatted text: {chat_formatted_text}")
         return chat_formatted_text
@@ -474,18 +482,18 @@ class BaseCustomModel(ABC):
                     # Call the appropriate method based on the flag
                     if use_structured_output:
                         # Call the structured output handling
-                        resp_text, resp_status = await self._handle_structured_output(
+                        so_result = await self._handle_structured_output(
                             input, model_params, **kwargs
                         )
 
-                        # If _handle_structured_output returns None, None, it means we should fall back to regular generation
-                        if resp_text is None and resp_status is None:
+                        # If _handle_structured_output returns None, it means we should fall back to regular generation
+                        if so_result is None:
                             logger.info(
                                 "Structured output not configured, falling back to regular generation"
                             )
                             result = await self._generate_text(input, model_params, **kwargs)
                         else:
-                            result = (resp_text, resp_status)
+                            result = so_result
                     else:
                         # Regular text generation
                         result = await self._generate_text(input, model_params, **kwargs)
@@ -497,7 +505,10 @@ class BaseCustomModel(ABC):
                         resp_code = result[1]
                         # IMPORTANT: add more items if needed in future
                         result = (resp_str, resp_code)
-                if not attempt.retry_state.outcome.failed:
+                if (
+                    attempt.retry_state.outcome is not None
+                    and not attempt.retry_state.outcome.failed
+                ):
                     attempt.retry_state.set_result(result)
         except RetryError:
             logger.error(f"[{self.name()}] Request failed after {self.retry_attempts} attempts")
@@ -558,37 +569,49 @@ class BaseCustomModel(ABC):
                     )
                     sys.exit()
 
-    def _get_status_from_body(self, response: str) -> int:
+    def _get_status_from_body(self, response: Any) -> Optional[int]:
         """
         Extract http error status code from body
         """
         try:
-            # openai sends body as dict but tgi sends as string
-            if isinstance(response.body, dict):
-                body = response.body
-            elif isinstance(response.body, str):
-                body = json.loads(response.body)
-            else:
-                return None
+            # Attempt to normalize to a dict body
+            body: Optional[dict[str, Any]] = None
+            # Some SDK exceptions have a `.body` attribute (object with dict or JSON string)
+            if hasattr(response, "body"):
+                resp_body = getattr(response, "body")
+                if isinstance(resp_body, dict):
+                    body = resp_body
+                elif isinstance(resp_body, str):
+                    body = json.loads(resp_body)
+            # If not found via attribute, the response itself might be a dict or JSON string
+            if body is None:
+                if isinstance(response, dict):
+                    body = response
+                elif isinstance(response, str):
+                    # Try load as JSON string
+                    body = json.loads(response)
+                else:
+                    return None
 
             status_code = body.get("statusCode")
             # for openai api it is in code
             if status_code is None:
                 code = body.get("code")
-                return int(code)
+                if code is not None:
+                    return int(code)
+                return None
             else:
                 return int(status_code)
-        except:
+        except Exception:
             return None
 
 
 class CustomTGI(BaseCustomModel):
-
     def __init__(self, model_config: dict[str, Any]) -> None:
         super().__init__(model_config)
         utils.validate_required_keys(["url", "auth_token"], model_config, "model")
         self.model_config = model_config
-        self.auth_token = model_config.get("auth_token").replace("Bearer ", "")
+        self.auth_token = cast(str, model_config.get("auth_token")).replace("Bearer ", "")
 
     async def _generate_native_structured_output(
         self,
@@ -603,6 +626,7 @@ class CustomTGI(BaseCustomModel):
         try:
             # Set Client
             self._set_client(model_params.url, model_params.auth_token)
+            client = cast(HttpClient, self._client)
 
             # Get JSON schema from the Pydantic model
             json_schema = pydantic_model.model_json_schema()
@@ -612,14 +636,14 @@ class CustomTGI(BaseCustomModel):
 
             # Prepare generation parameters with guidance
             generation_params_with_guidance = {
-                **self.generation_params,
+                **(self.generation_params or {}),
                 "parameters": {"grammar": {"type": "json", "value": json_schema}},
             }
 
-            payload = self._client.build_request(payload=payload)
+            payload = client.build_request_with_payload(payload=payload)
 
             # Send Request with guidance parameters
-            resp = await self._client.async_send_request(
+            resp = await client.async_send_request(
                 payload, generation_params=generation_params_with_guidance
             )
 
@@ -672,11 +696,12 @@ class CustomTGI(BaseCustomModel):
         try:
             # Set Client
             self._set_client(model_params.url, model_params.auth_token)
+            client = cast(HttpClient, self._client)
             # Build Request
             payload = {"inputs": self.get_chat_formatted_text(input.messages)}
-            payload = self._client.build_request(payload=payload)
+            payload = client.build_request_with_payload(payload=payload)
             # Send Request
-            resp = await self._client.async_send_request(
+            resp = await client.async_send_request(
                 payload, generation_params=self.generation_params
             )
 
@@ -708,10 +733,18 @@ class CustomAzure(BaseCustomModel):
         super().__init__(model_config)
         utils.validate_required_keys(["url", "auth_token"], model_config, "model")
         self.model_config = model_config
-        if type(model_config["auth_token"]) == str:
-            self.auth_token = model_config.get("auth_token").replace("Bearer ", "")
-        elif type(model_config["auth_token"]) == list:
-            self.auth_token = model_config.get("auth_token")[0].replace("Bearer ", "")
+        auth_token_value = model_config["auth_token"]  # already validated key exists
+
+        if isinstance(auth_token_value, str):
+            self.auth_token = auth_token_value.replace("Bearer ", "")
+        elif isinstance(auth_token_value, list) and auth_token_value:
+            # take first element if non-empty list
+            first_item = auth_token_value[0]
+            if not isinstance(first_item, str):
+                raise TypeError("auth_token list must contain strings")
+            self.auth_token = first_item.replace("Bearer ", "")
+        else:
+            raise ValueError("auth_token must be a string or non-empty list of strings")
 
     async def _generate_text(
         self, input: ChatPromptValue, model_params: ModelParams
@@ -724,7 +757,7 @@ class CustomAzure(BaseCustomModel):
             payload = {
                 "messages": utils.convert_messages_from_langchain_to_chat_format(input.messages)
             }
-            payload = self._client.build_request(payload=payload)
+            payload = self._client.build_request_with_payload(payload=payload)
             # Send Request
             resp = await self._client.async_send_request(
                 payload, generation_params=self.generation_params
@@ -767,7 +800,7 @@ class CustomMistralAPI(BaseCustomModel):
             )
             messages = [{"role": m["role"], "content": m["content"]} for m in chat_format_messages]
             self._set_client(model_url, model_params.auth_token)
-            chat_response = await self._client.chat.complete_async(
+            chat_response = await self._client.chat.complete_async(  # type: ignore
                 model=self.model_config.get("model"),
                 messages=messages,
                 **self.generation_params,
@@ -796,7 +829,7 @@ class CustomVLLM(BaseCustomModel):
         super().__init__(model_config)
         utils.validate_required_keys(["url", "auth_token"], model_config, "model")
         self.model_config = model_config
-        self.auth_token = model_config.get("auth_token").replace("Bearer ", "")
+        self.auth_token = str(model_config.get("auth_token")).replace("Bearer ", "")
         self.model_serving_name = model_config.get("model_serving_name", self.name())
 
     def _validate_completions_api_support(self) -> None:
@@ -815,6 +848,7 @@ class CustomVLLM(BaseCustomModel):
         model_url = model_params.url
         try:
             self._set_client(model_url, model_params.auth_token)
+            client = cast(OpenAIClient, self._client)
 
             # Create JSON schema for guided generation
             json_schema = pydantic_model.model_json_schema()
@@ -822,17 +856,15 @@ class CustomVLLM(BaseCustomModel):
             # Prepare payload using the client
             if self.model_config.get("completions_api", False):
                 formatted_prompt = self.get_chat_formatted_text(input.messages)
-                payload = self._client.build_request(formatted_prompt=formatted_prompt)
+                payload = client.build_request(formatted_prompt=formatted_prompt)
             else:
-                payload = self._client.build_request(messages=input.messages)
+                payload = client.build_request(messages=input.messages)
 
             # Use vLLM's native guided generation
-            extra_params = {**self.generation_params, "guided_json": json_schema}
+            extra_params = {**(self.generation_params or {}), "guided_json": json_schema}
 
             # Send the request using the client
-            completion = await self._client.send_request(
-                payload, self.model_serving_name, extra_params
-            )
+            completion = await client.send_request(payload, self.model_serving_name, extra_params)
 
             # Check if the request was successful based on the response status
             resp_status = getattr(completion, "status_code", 200)  # Default to 200 if not present
@@ -860,7 +892,7 @@ class CustomVLLM(BaseCustomModel):
             try:
                 parsed_data = json.loads(resp_text)
                 # Validate with pydantic model
-                validated_output = pydantic_model(**parsed_data)
+                pydantic_model(**parsed_data)
                 # Return JSON string representation
                 logger.info(f"[{self.name()}] Native structured output generation succeeded")
                 return json.dumps(parsed_data), resp_status
@@ -956,12 +988,12 @@ class CustomOpenAI(BaseCustomModel):
 
             # Add pydantic_model to generation params
             all_params = {
-                **self.generation_params,
+                **(self.generation_params or {}),
                 "pydantic_model": pydantic_model,
             }
             # Send the request using the client
             completion = await self._client.send_request(
-                payload, self.model_config.get("model"), all_params
+                payload, str(self.model_config.get("model")), all_params
             )
 
             # Check if the request was successful based on the response status
@@ -991,7 +1023,7 @@ class CustomOpenAI(BaseCustomModel):
                 json_data = json.loads(resp_text)
                 # Try to validate with pydantic model
                 logger.debug(f"[{self.name()}] Validating response against schema")
-                validated_data = pydantic_model.model_validate(json_data)
+                pydantic_model.model_validate(json_data)
                 logger.info(f"[{self.name()}] Native structured output generation succeeded")
                 return resp_text, resp_status
             except (json.JSONDecodeError, ValidationError) as e:
@@ -1025,7 +1057,7 @@ class CustomOpenAI(BaseCustomModel):
             else:
                 payload = self._client.build_request(messages=input.messages)
             completion = await self._client.send_request(
-                payload, self.model_config.get("model"), self.generation_params
+                payload, str(self.model_config.get("model")), self.generation_params
             )
             if self.model_config.get("completions_api", False):
                 resp_text = completion.choices[0].model_dump()["text"].strip()
@@ -1076,7 +1108,7 @@ class CustomOllama(BaseCustomModel):
                 payload = self._client.build_request(messages=input.messages)
 
             # Use Ollama's native structured output using format parameter
-            extra_params = {**self.generation_params, "format": json_schema}
+            extra_params = {**(self.generation_params or {}), "format": json_schema}
 
             # Send the request using the client
             completion = await self._client.send_request(payload, self.name(), extra_params)
@@ -1108,7 +1140,7 @@ class CustomOllama(BaseCustomModel):
                 parsed_data = json.loads(resp_text)
                 # Try to validate with pydantic model
                 logger.debug(f"[{self.name()}] Validating response against schema")
-                validated_output = pydantic_model(**parsed_data)
+                pydantic_model(**parsed_data)
                 logger.info(f"[{self.name()}] Native structured output generation succeeded")
                 return resp_text, resp_status
             except (json.JSONDecodeError, ValidationError) as e:
@@ -1155,7 +1187,6 @@ class CustomOllama(BaseCustomModel):
 
 
 class CustomTriton(BaseCustomModel):
-
     def _get_payload_config_template(self, inference_server: str, payload_key: str = "default"):
         """
         Get the payload configuration template for the Triton server.
@@ -1224,7 +1255,6 @@ class CustomTriton(BaseCustomModel):
         return payload_dict
 
     def _get_response_text(self, resp_text: str, payload_config_template: dict):
-
         try:
             json_resp = json.loads(resp_text)
             final_resp_text = json_resp["outputs"][0]["data"][0]
@@ -1262,7 +1292,7 @@ class CustomTriton(BaseCustomModel):
         super().__init__(model_config)
         utils.validate_required_keys(["url", "auth_token"], model_config, "model")
         self.model_config = model_config
-        self.auth_token = model_config.get("auth_token").replace("Bearer ", "")
+        self.auth_token = str(model_config.get("auth_token")).replace("Bearer ", "")
 
     async def _generate_text(
         self, input: ChatPromptValue, model_params: ModelParams
@@ -1283,7 +1313,7 @@ class CustomTriton(BaseCustomModel):
             payload = self._create_triton_request(
                 payload_json_template, conversation, self.generation_params
             )
-            payload = self._client.build_request(payload=payload)
+            payload = self._client.build_request_with_payload(payload=payload)
 
             # Send Request
             resp = await self._client.async_send_request(payload)

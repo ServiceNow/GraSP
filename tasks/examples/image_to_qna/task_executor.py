@@ -22,7 +22,9 @@ class ImagesMetadata(DataTransform):
     def name(self) -> str:
         return "ImagesMetadata"
 
-    def transform(self, data: list[dict[str, Any]], params: dict[str, Any]) -> list[dict[str, Any]]:
+    def transform(
+        self, data: list[dict[str, Any]], params: dict[str, Any]
+    ) -> list[dict[str, Any]]:
         """
         Store metadata for images in the state.
         """
@@ -83,7 +85,7 @@ class TokenChecker(LambdaFunction):
     def apply(lambda_node_dict: dict, state: GraspState):
         texts = state["ocr_texts"]
         documents = ""
-        if not texts or len(texts) == 0 or texts[0] == None:
+        if not texts or len(texts) == 0 or texts[0] is None:
             token_count = 0
         else:
             for i, text in enumerate(texts, start=1):
@@ -165,12 +167,12 @@ class AnswerExtractProcessor(NodePostProcessorWithState):
             thinking = response_text.split("<think>")[1].split("</think>")[0]
             try:
                 answer = response_text.split("</think>")[1]
-            except:
+            except Exception:
                 # could not generate completely
                 response_text = "TOO LONG"
                 thinking = "Response too long"
                 answer = "TOO LONG"
-        except:
+        except Exception:
             # If the expected format is not found, set thinking as empty and remaining part as answer
             thinking = ""
             answer = response_text

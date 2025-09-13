@@ -7,10 +7,10 @@ class BaseNodeBuilder:
     """Base class for all node builders."""
 
     def __init__(self, name: str, node_type: str):
-        self.name = name
-        self.node_type = node_type
-        self._config = {"node_type": node_type}
-        self._messages = []
+        self.name: str = name
+        self.node_type: str = node_type
+        self._config: dict[str, Any] = {"node_type": node_type}
+        self._messages: list[dict[str, Union[str, list[dict[str, Any]]]]] = []
 
     def build(self) -> dict[str, Any]:
         """Build the final node configuration."""

@@ -33,15 +33,15 @@ import re
 import sys
 from collections import Counter, defaultdict
 from dataclasses import dataclass, field
-from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence, Set, Tuple
+from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence, Set, Tuple, Union, cast
 
-import pandas as pd
+import pandas as pd  # type: ignore[import-untyped]
 import torch
-from mlxtend.frequent_patterns import association_rules, fpgrowth
-from mlxtend.preprocessing import TransactionEncoder
-from nltk.stem import PorterStemmer
+from mlxtend.frequent_patterns import association_rules, fpgrowth  # type: ignore[import-untyped]
+from mlxtend.preprocessing import TransactionEncoder  # type: ignore[import-untyped]
+from nltk.stem import PorterStemmer  # type: ignore[import-untyped]
 from sentence_transformers import SentenceTransformer
-from sklearn.cluster import DBSCAN
+from sklearn.cluster import DBSCAN  # type: ignore[import-untyped]
 
 # ----------------------------
 # Logging
@@ -166,19 +166,19 @@ class SemanticClusterer:
 
     def _cluster_sklearn(self, X) -> List[int]:
         db = DBSCAN(eps=self.cfg.eps, min_samples=self.cfg.min_samples, metric="cosine")
-        return db.fit_predict(X).tolist()
+        return cast(List[int], db.fit_predict(X).tolist())
 
     def _cluster_cuml(self, X) -> List[int]:
         try:
-            import cupy as cp
-            from cuml.cluster import DBSCAN as CuDBSCAN
+            import cupy as cp  # type: ignore[import-not-found]
+            from cuml.cluster import DBSCAN as CuDBSCAN  # type: ignore[import-not-found]
         except Exception as e:
             logger.warning("cuML not available; falling back to scikit-learn DBSCAN: %s", e)
             return self._cluster_sklearn(X)
 
         db = CuDBSCAN(eps=self.cfg.eps, min_samples=self.cfg.min_samples, metric="cosine")
         labels = db.fit_predict(cp.asarray(X))
-        return cp.asnumpy(labels).astype(int).tolist()
+        return cast(List[int], cp.asnumpy(labels).astype(int).tolist())
 
     def fit_predict(self, tags: Sequence[str]) -> Dict[int, List[str]]:
         if not tags:
@@ -463,7 +463,7 @@ class InstaGPipeline:
         num_unique_after, unique_after = unique_tags_and_count(final_lists)
         avg_tags = average_tags_per_record(final_lists)
 
-        stats: Dict[str, Any] = {
+        stats = {
             "num_records": len(output_data),
             "num_unique_tags_before_normalizing": raw_unique_count,
             "num_unique_tags": num_unique_after,
@@ -497,7 +497,9 @@ def extract_instag_stats(
 # ----------------------------
 
 
-def _read_input(path: Optional[str]) -> List[Dict[str, Any]]:
+def _read_input(
+    path: Union[int, Union[str, bytes, os.PathLike[str], os.PathLike[bytes]]],
+) -> List[Dict[str, Any]]:
     if path in (None, "-"):
         raw = sys.stdin.read()
     else:
@@ -509,12 +511,13 @@ def _read_input(path: Optional[str]) -> List[Dict[str, Any]]:
     return data  # type: ignore[return-value]
 
 
-def _write_output(obj: Mapping[str, Any], path: Optional[str]) -> None:
+def _write_output(obj: list[dict[str, Any]], path: Optional[str]) -> None:
     text = json.dumps(obj, indent=2, ensure_ascii=False)
     if path in (None, "-"):
         sys.stdout.write(text + "\n")
     else:
-        with open(path, "w", encoding="utf-8") as f:
+        out_path = cast(str, path)
+        with open(out_path, "w", encoding="utf-8") as f:
             f.write(text)
 
 

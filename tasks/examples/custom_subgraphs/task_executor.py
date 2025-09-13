@@ -16,7 +16,9 @@ class CritiqueAnswerNodePreProcessor(NodePreProcessor):
             state["messages"] = []
 
         cls_map = {"ai": HumanMessage, "human": AIMessage}
-        translated = [cls_map[msg.type](content=msg.content) for msg in state["messages"]]
+        translated = [
+            cls_map[msg.type](content=msg.content) for msg in state["messages"]
+        ]
         state.update({"messages": translated})
         return state
 
@@ -57,7 +59,8 @@ class CustomSubgraphsOutputGenerator(BaseOutputGenerator):
         # If the last message doesn't contain "no more feedback", we do NOT finalize
         if (
             len(chat_format_messages) < 1
-            or "no more feedback" not in chat_format_messages[-1]["content"].lower().strip()
+            or "no more feedback"
+            not in chat_format_messages[-1]["content"].lower().strip()
         ):
             return []
 
@@ -71,7 +74,9 @@ class CustomSubgraphsOutputGenerator(BaseOutputGenerator):
                 0,
                 {
                     "role": "user",
-                    "content": state["rephrased_text"].replace("PARAPHRASED QUESTION: ", ""),
+                    "content": state["rephrased_text"].replace(
+                        "PARAPHRASED QUESTION: ", ""
+                    ),
                 },
             )
 

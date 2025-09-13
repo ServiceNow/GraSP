@@ -3,10 +3,10 @@ import os
 import signal
 import time
 import uuid
-from typing import Any, Callable, Optional, Union
+from typing import Any, Callable, Optional, Union, cast
 
-import datasets
-import tqdm
+import datasets  # type: ignore[import-untyped]
+import tqdm  # type: ignore[import-untyped]
 from langgraph.graph.state import CompiledStateGraph
 
 from grasp.core.graph.graph_config import GraphConfig
@@ -29,10 +29,10 @@ class DatasetProcessor:
         batch_size: int = 50,
         checkpoint_interval: int = 100,
         debug: bool = False,
-        input_record_generator: Callable = None,
-        output_record_generator: Callable = None,
+        input_record_generator: Optional[Callable] = None,
+        output_record_generator: Optional[Callable] = None,
         resumable: bool = False,
-        task_name: str = None,
+        task_name: Optional[str] = None,
     ):
         assert (
             checkpoint_interval % batch_size == 0
@@ -78,7 +78,7 @@ class DatasetProcessor:
 
         # Initialize the tqdm progress bar with the correct number of records to process
         self.pbar = tqdm.tqdm(total=self.num_records_total)
-        self.graph_results = []
+        self.graph_results: list[dict[str, Any]] = []
 
         # Initialize input dataset iterator
         self.input_dataset = iter(input_dataset)
@@ -95,7 +95,7 @@ class DatasetProcessor:
                     return path_parts[i + 1]
 
             return f"task_{hash(self.output_file) % 10000:04d}"
-        except:
+        except Exception:
             return f"task_{uuid.uuid4().hex[:8]}"
 
     def _setup_resumable_execution(self):
@@ -215,7 +215,7 @@ class DatasetProcessor:
         is_oasst_mapper_required = (
             True
             if (
-                self.graph_config.oasst_mapper is not None
+                isinstance(self.graph_config.oasst_mapper, dict)
                 and self.graph_config.oasst_mapper.get("required") == "yes"
             )
             else False
@@ -289,6 +289,7 @@ class DatasetProcessor:
         # Handle intermediate writing if needed
         if (
             is_oasst_mapper_required
+            and isinstance(self.graph_config.oasst_mapper, dict)
             and self.graph_config.oasst_mapper.get("intermediate_writing") == "yes"
         ):
             intermediate_write_path = (
@@ -305,7 +306,8 @@ class DatasetProcessor:
         # Apply OASST mapping if required
         if is_oasst_mapper_required:
             try:
-                mapper = DataMapper(config=self.graph_config.oasst_mapper)
+                mapper_cfg = cast(dict[str, Any], self.graph_config.oasst_mapper)
+                mapper = DataMapper(config=mapper_cfg)
                 oasst_mapped_output = mapper.map_all_items(output_records)
             except Exception as e:
                 logger.error(f"Failed to apply oasst_mapper with error: {e}")
@@ -357,7 +359,7 @@ class DatasetProcessor:
                 signal.signal(sig, lambda s, f: self._handle_signal(s, f))
 
         # Use asyncio tasks to process records in parallel up to batch_size
-        pending_tasks = set()
+        pending_tasks: set[asyncio.Task] = set()
         # Track how many records we've started processing to limit total for streaming datasets
         records_started = 0
 
@@ -420,7 +422,7 @@ class DatasetProcessor:
                     )
                     await self._write_checkpoint(is_oasst_mapper_required)
 
-    async def _process_record(self, record: dict[str, Any]) -> None:
+    async def _process_record(self, record: Optional[dict[str, Any]]) -> None:
         """
         Process a single record through the graph.
 
@@ -428,6 +430,9 @@ class DatasetProcessor:
             record: Input record to process
         """
         try:
+            if record is None:
+                logger.warning("Received None record, skipping")
+                return
             if self.num_records_processed >= self.num_records_total:
                 logger.debug(
                     f"Already processed target number of records. Skipping record {record.get('id')}"
@@ -445,10 +450,15 @@ class DatasetProcessor:
                 await self._add_graph_result(graph_result, record)
 
         except Exception as e:
-            logger.error(f"Error processing record {record.get('id', 'unknown')}: {e}")
+            rec_id_str = "unknown"
+            if isinstance(record, dict):
+                rec_id_str = str(record.get("id", "unknown"))
+            logger.error(f"Error processing record {rec_id_str}: {e}")
 
             if self.resumable and self.resume_manager:
-                record_id = self.resume_manager.get_record_id(record)
+                safe_record: dict[str, Any] = record if isinstance(record, dict) else {}
+                record_id = self.resume_manager.get_record_id(safe_record)
                 self.resume_manager.in_process_records.discard(record_id)
-                self.resume_manager.position_tracker.mark_position(self.dataset_indx)
+                if self.resume_manager.position_tracker is not None:
+                    self.resume_manager.position_tracker.mark_position(self.dataset_indx)
                 self.resume_manager.save_state()

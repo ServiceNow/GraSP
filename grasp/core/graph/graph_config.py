@@ -1,7 +1,7 @@
 from copy import deepcopy
-from typing import Any, Union
+from typing import Any, Optional, Union, cast
 
-from datasets import Dataset, IterableDataset
+from datasets import Dataset, IterableDataset  # type: ignore[import-untyped]
 
 from grasp.core.graph.edges.edge_factory import EdgeFactory
 from grasp.core.graph.nodes import node_utils
@@ -46,6 +46,13 @@ class GraphConfig:
         if isinstance(config, str):
             config = utils.load_yaml_file(filepath=config)
 
+        # Ensure config is a dictionary after potential YAML load
+        if not isinstance(config, dict):
+            raise TypeError("config must be a dict after loading YAML or when provided directly")
+
+        # Help mypy understand the type of config
+        config = cast(dict[str, Any], config)
+
         if "graph_config" not in config:
             raise ValueError("graph_config key is required in configuration")
 
@@ -55,11 +62,11 @@ class GraphConfig:
 
         self.graph_config = deepcopy(config["graph_config"])
         self.schema_config = config.get("schema_config")
-        self.oasst_mapper = (
-            None
-            if not config.get("output_config")
-            else config.get("output_config").get("oasst_mapper")
-        )
+        # Normalize output_config to a dict to satisfy mypy and avoid Optional access
+        output_cfg = config.get("output_config") or {}
+        if not isinstance(output_cfg, dict):
+            output_cfg = {}
+        self.oasst_mapper = output_cfg.get("oasst_mapper")
         self.data_config = config.get("data_config")
 
         # Apply overrides before processing subgraphs
@@ -101,17 +108,19 @@ class GraphConfig:
             "post_generation_tasks", {}
         )
 
+        # Ensure output_config exists and is a dict before writing to it
+        output_cfg = config.setdefault("output_config", {})
+        if not isinstance(output_cfg, dict):
+            output_cfg = {}
+            config["output_config"] = output_cfg
+
         # Check and update for oasst
-        if transform_args.get("oasst", False) and "oasst_mapper" not in config.get(
-            "output_config", {}
-        ):
-            config["output_config"]["oasst_mapper"] = post_generation_tasks["oasst_mapper"]
+        if transform_args.get("oasst", False) and "oasst_mapper" not in output_cfg:
+            output_cfg["oasst_mapper"] = post_generation_tasks["oasst_mapper"]
 
         # Check and update for data_quality
-        if transform_args.get("quality", False) and "data_quality" not in config.get(
-            "output_config", {}
-        ):
-            config["output_config"]["data_quality"] = post_generation_tasks["data_quality"]
+        if transform_args.get("quality", False) and "data_quality" not in output_cfg:
+            output_cfg["data_quality"] = post_generation_tasks["data_quality"]
 
         return config
 
@@ -412,7 +421,7 @@ class GraphConfig:
         """
         return self.graph_state_config
 
-    def get_node(self, node_name: str) -> BaseNode:
+    def get_node(self, node_name: str) -> Optional[BaseNode]:
         """
         Retrieves a node by its name.
 

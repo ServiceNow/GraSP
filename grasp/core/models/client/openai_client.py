@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Sequence, Union, cast
 
 import httpx
 from langchain_core.messages import BaseMessage
@@ -53,7 +53,7 @@ class OpenAIClient(BaseClient):
         validated_config = OpenAIClientConfig(**client_kwargs)
         validated_client_kwargs = validated_config.model_dump()
 
-        self.client = (
+        self.client: Any = (
             AsyncOpenAI(**validated_client_kwargs)
             if async_client
             else OpenAI(**validated_client_kwargs)
@@ -63,8 +63,12 @@ class OpenAIClient(BaseClient):
         self.stop = stop
 
     def build_request(
-        self, messages: List[BaseMessage] = None, formatted_prompt: str = None, **kwargs
-    ):
+        self,
+        messages: Optional[Sequence[BaseMessage]] = None,
+        formatted_prompt: Optional[str] = None,
+        stop: Optional[List[str]] = None,
+        **kwargs: Any,
+    ) -> Any:
         """
         Build a request payload for the model.
 
@@ -76,6 +80,7 @@ class OpenAIClient(BaseClient):
         Args:
             messages (List[BaseMessage]): The messages to pass to the model. This is necessary for chat completions API.
             formatted_prompt (str): The formatted prompt to pass to the model. This is necessary for completions API.
+            stop (Optional[List[str]], optional): List of stop sequences that indicate when text generation should halt. If None, the client-level default set during initialization will be used.
             **kwargs: Additional keyword arguments to include in the payload.
 
         Returns:
@@ -84,8 +89,10 @@ class OpenAIClient(BaseClient):
         Raises:
             ValueError: If the messages or formatted prompt are invalid.
         """
-        if self.stop is not None:
-            kwargs["stop"] = self.stop
+        # Prefer explicit stop passed to this call; otherwise use client default
+        effective_stop = stop if stop is not None else self.stop
+        if effective_stop is not None:
+            kwargs["stop"] = effective_stop
         payload = {**kwargs}
         if self.chat_completions_api:
             if messages is not None and len(messages) > 0:
@@ -100,7 +107,7 @@ class OpenAIClient(BaseClient):
                     "messages passed is None or empty. Please provide valid messages to build request with chat completions API."
                 )
         else:
-            if formatted_prompt is not None:
+            if formatted_prompt is not None and len(formatted_prompt) > 0:
                 payload["prompt"] = formatted_prompt
                 return payload
             else:
@@ -111,11 +118,9 @@ class OpenAIClient(BaseClient):
                     "formatted_prompt passed is None. Please provide a valid formatted prompt to build request with completion API."
                 )
 
-        return None
-
     def send_request(
         self,
-        payload,
+        payload: Any,
         model_name: str,
         generation_params: Optional[Dict[str, Any]] = None,
     ):
@@ -152,27 +157,26 @@ class OpenAIClient(BaseClient):
             k: v for k, v in generation_params.items() if k not in additional_extensions
         }
 
+        client = cast(Any, self.client)
         if not additional_params:
             if self.chat_completions_api:
-                return self.client.chat.completions.create(
+                return client.chat.completions.create(
                     **payload, model=model_name, **generation_params
                 )
             else:
-                return self.client.completions.create(
-                    **payload, model=model_name, **generation_params
-                )
+                return client.completions.create(**payload, model=model_name, **generation_params)
         else:
             logger.info(f"Detected vLLM-specific parameters: {additional_params}")
             # Use extra_body to pass vLLM-specific parameters
             if self.chat_completions_api:
-                return self.client.chat.completions.create(
+                return client.chat.completions.create(
                     **payload,
                     model=model_name,
                     extra_body=additional_params,
                     **standard_params,
                 )
             else:
-                return self.client.completions.create(
+                return client.completions.create(
                     **payload,
                     model=model_name,
                     extra_body=additional_params,

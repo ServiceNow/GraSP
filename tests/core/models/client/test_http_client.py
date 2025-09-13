@@ -79,17 +79,19 @@ class TestHttpClient(unittest.TestCase):
         """Test build_request method constructs payloads correctly"""
         # Test basic payload
         base_payload = {"prompt": "Hello, world!"}
-        result = self.client.build_request(base_payload)
+        result = self.client.build_request_with_payload(base_payload)
         self.assertEqual(result, {"prompt": "Hello, world!"})
 
         # Test with additional kwargs
-        result = self.client.build_request(base_payload, temperature=0.7, max_tokens=100)
+        result = self.client.build_request_with_payload(
+            base_payload, temperature=0.7, max_tokens=100
+        )
         expected = {"prompt": "Hello, world!", "temperature": 0.7, "max_tokens": 100}
         self.assertEqual(result, expected)
 
         # Test with stop sequences
         client_with_stop = HttpClient(base_url=self.base_url, stop=["###", "END"])
-        result = client_with_stop.build_request(base_payload)
+        result = client_with_stop.build_request_with_payload(base_payload)
         expected = {
             "prompt": "Hello, world!",
             "stop": ["###", "END"],

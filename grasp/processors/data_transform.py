@@ -4,19 +4,19 @@ This module provides abstract and concrete classes for transforming data records
 Transformations can be applied to lists of dictionaries, allowing for data manipulation operations.
 """
 
-import base64
-import io
 import os
 import re
 from abc import ABC, abstractmethod
-from typing import Any, Union
-
-import requests
-from PIL import Image
+from typing import Any, Optional, Union
 
 from grasp.logger.logger_config import logger
 from grasp.utils.audio_utils import get_audio_fields, get_audio_url, load_audio
-from grasp.utils.image_utils import get_image_fields, get_image_url, is_data_url, load_image
+from grasp.utils.image_utils import (
+    get_image_fields,
+    get_image_url,
+    is_data_url,
+    load_image,
+)
 
 
 class DataTransform(ABC):
@@ -121,7 +121,7 @@ class SkipRecords(DataTransform):
                 ranges[start] = end
 
             # build a set of skip indices
-            skip_indices = set()
+            skip_indices: set[int] = set()
             for s, e in ranges.items():
                 skip_indices.update(range(s, e))
             # build new dataset by skipping the data
@@ -398,7 +398,7 @@ class CreateAudioUrlTransform(DataTransform):
     def transform(
         self,
         data: list[dict[str, Any]],
-        params: dict[str, Any] = None,
+        params: Optional[dict[str, Any]] = None,
     ) -> list[dict[str, Any]]:
         if not data:
             logger.warning("No data provided to CreateAudioUrlTransform")

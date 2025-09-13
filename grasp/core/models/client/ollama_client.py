@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Sequence
 
 from langchain_core.messages import BaseMessage
 from langchain_openai.chat_models.base import _convert_message_to_dict
@@ -45,7 +45,7 @@ class OllamaClient(BaseClient):
         validated_config = OllamaClientConfig(**client_kwargs)
         validated_client_kwargs = validated_config.model_dump()
 
-        self.client = (
+        self.client: Any = (
             AsyncClient(**validated_client_kwargs)
             if async_client
             else Client(**validated_client_kwargs)
@@ -56,8 +56,8 @@ class OllamaClient(BaseClient):
 
     def build_request(
         self,
-        messages: List[BaseMessage] = None,
-        formatted_prompt: str = None,
+        messages: Optional[Sequence[BaseMessage]] = None,
+        formatted_prompt: Optional[str] = None,
         stop: Optional[List[str]] = None,
         **kwargs,
     ):
@@ -107,7 +107,10 @@ class OllamaClient(BaseClient):
                 )
 
     def send_request(
-        self, payload, model_name: str, generation_params: Optional[Dict[str, Any]] = None
+        self,
+        payload,
+        model_name: str,
+        generation_params: Optional[Dict[str, Any]] = None,
     ):
         """
         Send a request to the Ollama API.
@@ -120,10 +123,9 @@ class OllamaClient(BaseClient):
         Returns:
             Any: The response from the model.
         """
-        format = None
-        if "format" in generation_params:
-            format = generation_params["format"]
-            del generation_params["format"]
+        # Normalize generation_params and extract optional 'format'
+        generation_params = dict(generation_params or {})
+        format = generation_params.pop("format", None)
 
         if self.chat_completions_api:
             return self.client.chat(
@@ -135,5 +137,8 @@ class OllamaClient(BaseClient):
             )
         else:
             return self.client.generate(
-                model=model_name, prompt=payload["prompt"], options=generation_params, format=format
+                model=model_name,
+                prompt=payload["prompt"],
+                options=generation_params,
+                format=format,
             )

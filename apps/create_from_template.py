@@ -1,7 +1,7 @@
-
 import yaml
 from pathlib import Path
 from datasets import load_dataset, get_dataset_config_names
+
 try:
     import streamlit as st
     from streamlit_flow import streamlit_flow
@@ -624,7 +624,7 @@ def output_config():
             required = st.checkbox(
                 "Required?",
                 value=oasst_mapper_existing.get("required", "").lower()
-                      in ["yes", "true"],
+                in ["yes", "true"],
                 key="required_checkbox",
             )
             oasst_type = st.selectbox(
@@ -636,7 +636,7 @@ def output_config():
             intermediate_writing = st.checkbox(
                 "Intermediate Writing?",
                 value=oasst_mapper_existing.get("intermediate_writing", "").lower()
-                      in ["yes", "true"],
+                in ["yes", "true"],
                 key="intermediate_checkbox",
             )
 
@@ -822,11 +822,11 @@ def delete_edge(index: int):
 
 
 def add_edge(
-        source: str,
-        target: str,
-        is_conditional: bool,
-        condition: str = None,
-        paths: dict[str, str] = None,
+    source: str,
+    target: str,
+    is_conditional: bool,
+    condition: str = None,
+    paths: dict[str, str] = None,
 ):
     edge = {
         "source": source,
@@ -846,10 +846,10 @@ def add_edge(
 
 
 def add_edge_conditional(
-        source: str,
-        is_conditional: bool,
-        condition: str = None,
-        paths: dict[str, str] = None,
+    source: str,
+    is_conditional: bool,
+    condition: str = None,
+    paths: dict[str, str] = None,
 ):
     edge = {
         "source": source,

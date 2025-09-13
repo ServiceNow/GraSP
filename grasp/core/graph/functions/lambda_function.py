@@ -9,6 +9,7 @@ class LambdaFunction(ABC):
     Implement apply() method for lambda function to be called by graph node.
     """
 
+    @staticmethod
     @abstractmethod
     def apply(lambda_node_dict: dict, state: GraspState):
         """

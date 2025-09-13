@@ -17,8 +17,7 @@ GraSP uses several tools to ensure code quality:
 
 - **Black**: For code formatting
 - **isort**: For import sorting
-- **flake8**: For style guide enforcement
-- **pylint**: For code quality analysis
+- **ruff**: For code quality analysis
 - **mypy**: For static type checking
 
 ### Using the Linting Tools
@@ -32,8 +31,7 @@ You can run all linters at once with:
 Or run individual linters:
 
 ```bash
-  make lint-flake8  # Run flake8
-  make lint-pylint  # Run pylint
+  make lint-ruff  # Run ruff
   make lint-mypy    # Run mypy
 ```
 
@@ -117,8 +115,7 @@ Configuration for all tools is in `pyproject.toml`, including:
 
 - Black configuration: `[tool.black]` section
 - isort configuration: `[tool.isort]` section
-- pylint configuration: `[tool.pylint]` section
+- ruff configuration: `[tool.ruff]` section
 - mypy configuration: `[tool.mypy]` section
-- flake8 configuration: `[tool.flake8]` section
 
 You can customize these settings to match your project's specific requirements.

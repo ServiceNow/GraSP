@@ -32,7 +32,7 @@ class TransformConfig(BaseModel):
     """
 
     transform: str
-    params: dict[str, Any] = None
+    params: Optional[dict[str, Any]] = None
 
 
 class OutputType(Enum):

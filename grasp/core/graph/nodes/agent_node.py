@@ -97,13 +97,13 @@ class AgentNode(LLMNode):
             updated_state = (
                 self.post_process().apply(responseMsg)
                 if isclass(self.post_process)
-                else self.post_process(ai_response)
+                else self.post_process(ai_response)  # type: ignore
             )
         else:
             updated_state = (
                 self.post_process().apply(responseMsg, state)
                 if isclass(self.post_process)
-                else self.post_process(ai_response, state)
+                else self.post_process(ai_response, state)  # type: ignore
             )
 
         # Store chat history
@@ -125,18 +125,24 @@ class AgentNode(LLMNode):
         Combines the base agent prompt with conditional injections based on chat history length.
         """
         messages = prompt.to_messages()
-        base_prompt = next(
+        base_prompt_candidate = next(
             (msg.content for msg in messages if isinstance(msg, SystemMessage)), None
         ) or state.get("_agent_prompt", "")
+        # Ensure we always operate on a string; content can sometimes be a list for multimodal
+        base_prompt_str: str = (
+            base_prompt_candidate
+            if isinstance(base_prompt_candidate, str)
+            else str(base_prompt_candidate)
+        )
         chat_history = state.get(constants.VAR_CHAT_HISTORY, [])
 
         for inject in self.inject_system_messages:
             for turn_index, message in inject.items():
                 if len(chat_history) // 2 == turn_index:
-                    base_prompt += f"\n{message}"
+                    base_prompt_str = f"{base_prompt_str}\n{message}"
                     break
 
-        return base_prompt
+        return base_prompt_str
 
     def to_backend(self) -> Any:
         """

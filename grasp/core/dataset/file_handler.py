@@ -6,11 +6,12 @@ in various formats including JSON, JSONL, and Parquet.
 
 import json
 from datetime import datetime
+from os import PathLike
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Optional, Union, cast
 
 import numpy as np
-import pandas as pd
+import pandas as pd  # type: ignore[import-untyped]
 
 from grasp.core.dataset.data_handler_base import DataHandler
 from grasp.core.dataset.dataset_config import DataSourceConfig, OutputConfig
@@ -37,10 +38,10 @@ class FileHandler(DataHandler):
         source_config: Optional[DataSourceConfig],
         output_config: Optional[OutputConfig] = None,
     ):
-        self.source_config: DataSourceConfig = source_config
-        self.output_config: OutputConfig = output_config
+        self.source_config: Optional[DataSourceConfig] = source_config
+        self.output_config: Optional[OutputConfig] = output_config
 
-    def read(self, path: Optional[str] = None) -> list[dict[str, Any]]:
+    def read(self, path: Union[str, PathLike[str], None] = None) -> list[dict[str, Any]]:
         """Read data from a local file.
 
         Supports reading from .parquet, .jsonl, and .json files.
@@ -56,21 +57,34 @@ class FileHandler(DataHandler):
             Exception: If reading operation fails.
         """
         try:
-            file_path = Path(path or self.source_config.file_path)
-            if not file_path:
-                raise ValueError("File path not provided")
+            if path is None:
+                if not self.source_config or not self.source_config.file_path:
+                    raise ValueError("File path not provided")
+                file_path = Path(self.source_config.file_path)
+            else:
+                file_path = Path(path)
 
             if file_path.suffix == ".parquet":
-                return pd.read_parquet(file_path).to_dict(orient="records")
+                return cast(
+                    list[dict[str, Any]], pd.read_parquet(file_path).to_dict(orient="records")
+                )
             elif file_path.suffix == ".csv":
-                df = pd.read_csv(file_path, encoding=self.source_config.encoding)
-                return df.to_dict(orient="records")
+                df = pd.read_csv(
+                    file_path,
+                    encoding=self.source_config.encoding if self.source_config else "utf-8",
+                )
+                return cast(list[dict[str, Any]], df.to_dict(orient="records"))
             elif file_path.suffix == ".jsonl":
-                with open(file_path, "r", encoding=self.source_config.encoding) as f:
-                    return [json.loads(line) for line in f]
+                enc = self.source_config.encoding if self.source_config else "utf-8"
+                with open(file_path, "r", encoding=enc) as f:
+                    return cast(list[dict[str, Any]], [json.loads(line) for line in f])
             elif file_path.suffix == ".json":
-                with open(file_path, "r", encoding=self.source_config.encoding) as f:
-                    return json.load(f)
+                enc = self.source_config.encoding if self.source_config else "utf-8"
+                with open(file_path, "r", encoding=enc) as f:
+                    data = json.load(f)
+                    if isinstance(data, list):
+                        return cast(list[dict[str, Any]], data)
+                    raise ValueError("Expected a list of records in JSON file")
             else:
                 raise ValueError(f"Unsupported file format: {file_path.suffix}")
         except Exception as e:
@@ -111,11 +125,13 @@ class FileHandler(DataHandler):
                 df = pd.DataFrame(data)
                 df.to_parquet(output_path)
             elif output_path.suffix == ".jsonl":
-                with open(output_path, "a", encoding=self.output_config.encoding) as f:
+                enc = self.output_config.encoding if self.output_config else "utf-8"
+                with open(output_path, "a", encoding=enc) as f:
                     for item in data:
                         f.write(json.dumps(item, ensure_ascii=False, cls=JSONEncoder) + "\n")
             else:
-                with open(output_path, "w", encoding=self.output_config.encoding) as f:
+                enc = self.output_config.encoding if self.output_config else "utf-8"
+                with open(output_path, "w", encoding=enc) as f:
                     json.dump(data, f, indent=2, ensure_ascii=False, cls=JSONEncoder)
 
             logger.info(f"Successfully wrote data to {output_path}")
@@ -140,10 +156,13 @@ class FileHandler(DataHandler):
             raise ValueError("Source directory not configured")
 
         source_dir = Path(self.source_config.file_path).parent
-        pattern = self.source_config.file_pattern or "*"
+        # Use shard.regex from DataSourceConfig if provided; otherwise default to match all
+        pattern = "*"
+        if self.source_config and self.source_config.shard and self.source_config.shard.regex:
+            pattern = self.source_config.shard.regex
         extensions = [".parquet", ".jsonl", ".json"]
 
-        matching_files = []
+        matching_files: list[Path] = []
         for ext in extensions:
             matching_files.extend(source_dir.glob(f"{pattern}*{ext}"))
 

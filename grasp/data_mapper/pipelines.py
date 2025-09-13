@@ -51,10 +51,8 @@ class PipelineFactory:
     def get_pipeline(self) -> list[PipelineStep]:
         """Return the appropriate pipeline based on the transform type."""
         if self.transform_type == "sft":
-            pipeline_builder = SFTPipelineBuilder()
+            return SFTPipelineBuilder().build_pipeline()
         elif self.transform_type == "dpo":
-            pipeline_builder = DPOPipelineBuilder()
+            return DPOPipelineBuilder().build_pipeline()
         else:
             raise ValueError("Invalid transform type. Must be 'sft' or 'dpo'.")
-
-        return pipeline_builder.build_pipeline()

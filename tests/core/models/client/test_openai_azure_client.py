@@ -1,9 +1,8 @@
 import json
-import os
 import sys
 import unittest
 from pathlib import Path
-from unittest.mock import MagicMock, call, patch
+from unittest.mock import MagicMock, patch
 
 # Add the parent directory to sys.path to import the necessary modules
 sys.path.append(str(Path(__file__).parent.parent.parent.parent.parent))
@@ -12,7 +11,10 @@ from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from langchain_core.prompt_values import ChatPromptValue, StringPromptValue
 from pydantic import BaseModel
 
-from grasp.core.models.client.openai_azure_client import AzureClientConfig, OpenAIAzureClient
+from grasp.core.models.client.openai_azure_client import (
+    AzureClientConfig,
+    OpenAIAzureClient,
+)
 
 
 class SampleStructuredOutput(BaseModel):
@@ -100,7 +102,7 @@ class TestOpenaiAzureClient(unittest.TestCase):
 
     def test_convert_input_with_prompt_value(self):
         """Test _convert_input with a PromptValue"""
-        client = MagicMock(spec=OpenAIAzureClient)
+        MagicMock(spec=OpenAIAzureClient)
 
         # Call the static method directly
         prompt_value = StringPromptValue(text="Test prompt")
@@ -111,7 +113,7 @@ class TestOpenaiAzureClient(unittest.TestCase):
 
     def test_convert_input_with_string(self):
         """Test _convert_input with a string"""
-        client = MagicMock(spec=OpenAIAzureClient)
+        MagicMock(spec=OpenAIAzureClient)
 
         # Call the static method directly
         result = OpenAIAzureClient._convert_input("Test prompt")
@@ -122,7 +124,7 @@ class TestOpenaiAzureClient(unittest.TestCase):
 
     def test_convert_input_with_messages(self):
         """Test _convert_input with a list of messages"""
-        client = MagicMock(spec=OpenAIAzureClient)
+        MagicMock(spec=OpenAIAzureClient)
 
         # Create a list of messages
         messages = [
@@ -143,7 +145,7 @@ class TestOpenaiAzureClient(unittest.TestCase):
 
     def test_convert_input_with_invalid_type(self):
         """Test _convert_input with an invalid input type"""
-        client = MagicMock(spec=OpenAIAzureClient)
+        MagicMock(spec=OpenAIAzureClient)
 
         # Call the static method with an invalid type
         with self.assertRaises(ValueError) as context:

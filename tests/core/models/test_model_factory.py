@@ -289,7 +289,7 @@ class TestModelFactory(unittest.TestCase):
         mock_model = MagicMock()
         with patch.object(ModelFactory, "create_model", return_value=mock_model) as mock_create:
             model_config = {"name": "test_model", "model_type": "vllm"}
-            result = ModelFactory.get_model(model_config)
+            ModelFactory.get_model(model_config)
 
             # Verify create_model was called
             mock_create.assert_called_once_with(model_config, "default")
@@ -334,7 +334,7 @@ class TestModelFactory(unittest.TestCase):
             with patch("grasp.utils.utils.get_graph_factory", return_value=MagicMock()):
                 with patch("grasp.utils.utils.get_func_from_str", return_value=MagicMock()):
                     with patch("grasp.utils.utils.get_graph_properties", return_value={}):
-                        node = AgentNode("test_node", node_config)
+                        AgentNode("test_node", node_config)
 
                         # Verify create_model was called with langgraph backend
                         mock_create.assert_called_with({"name": "test_model"}, "langgraph")

@@ -1,8 +1,10 @@
 import json
-from typing import Any, Dict, List, Optional, Tuple
+from types import SimpleNamespace
+from typing import Any, Dict, List, Optional, Sequence
 
 import aiohttp
-import requests
+import requests  # type: ignore[import-untyped]
+from langchain_core.messages import BaseMessage
 from pydantic import BaseModel, ConfigDict, Field
 
 from grasp.core.models.client.base_client import BaseClient
@@ -60,7 +62,20 @@ class HttpClient(BaseClient):
         self.verify_cert = validated_config.ssl_cert
         self.stop = stop
 
-    def build_request(self, payload: Dict[str, Any], **kwargs):
+    def build_request(
+        self,
+        messages: Optional[Sequence[BaseMessage]] = None,
+        formatted_prompt: Optional[str] = None,
+        stop: Optional[List[str]] = None,
+        **kwargs,
+    ):
+        # build_request is not supported in this class
+        # Use build_request_with_payload instead to construct the payload
+        raise NotImplementedError(
+            "HttpClient.build_request is not supported. Use build_request_with_payload(payload, **kwargs) instead."
+        )
+
+    def build_request_with_payload(self, payload: Dict[str, Any], **kwargs):
         """
         Build a request payload for the API.
 
@@ -84,7 +99,7 @@ class HttpClient(BaseClient):
     def send_request(
         self,
         payload: Dict[str, Any],
-        model_name: str = None,
+        model_name: Optional[str] = None,
         generation_params: Optional[Dict[str, Any]] = None,
     ) -> Any:
         """
@@ -126,7 +141,7 @@ class HttpClient(BaseClient):
     async def async_send_request(
         self,
         payload: Dict[str, Any],
-        model_name: str = None,
+        model_name: Optional[str] = None,
         generation_params: Optional[Dict[str, Any]] = None,
     ) -> Any:
         """
@@ -159,10 +174,15 @@ class HttpClient(BaseClient):
                     timeout=self.timeout,
                     ssl=self.verify_ssl,
                 ) as resp:
-                    # Read the body so connection doesn't get closed prematurely
-                    resp.text = await resp.text()
-                    resp.status_code = resp.status
-                    return resp
+                    # Read the body text to ensure the content is consumed before returning
+                    body_text = await resp.text()
+                    # Return a lightweight object mirroring requests.Response essentials
+                    return SimpleNamespace(
+                        text=body_text,
+                        status=resp.status,
+                        status_code=resp.status,
+                        headers=dict(resp.headers),
+                    )
         except Exception as e:
             logger.error(f"Error sending request: {e}")
             return ""

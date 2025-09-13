@@ -58,9 +58,9 @@ class DataQuality(BaseTool):
         self.task_list = self.config.get("tasks", [])
         self.parent_output_file_format = "conversation"
         self.num_records_total = 0
-        self.input = None
-        self.parent_output_file = None
-        self.output_dir = None
+        self.input: Optional[str] = None
+        self.parent_output_file: Optional[str] = None
+        self.output_dir: Optional[str] = None
 
     def process(self, input_path: Optional[str], output_path: Optional[str]) -> str:
         logger.info("====================================")
@@ -75,6 +75,8 @@ class DataQuality(BaseTool):
         logger.info(f"Running DataQualityProcessor on: {input_path}")
         self.parent_output_file = input_path
 
+        if self.parent_output_file is None:
+            raise ValueError("parent_output_file is not set")
         self.get_data_quality_input_file(self.parent_output_file)
         self.execute_data_quality_tasks()
         self.merge_results(input_path, output_path)
@@ -86,8 +88,11 @@ class DataQuality(BaseTool):
         return output_path
 
     def execute_data_quality_tasks(self) -> None:
-        if not os.path.exists(self.input):
-            raise ValueError(f"Input file {self.input} does not exist.")
+        if self.input is None:
+            raise ValueError("Input path for data quality tasks is not set.")
+        input_file: str = self.input
+        if not os.path.exists(input_file):
+            raise ValueError(f"Input file {input_file} does not exist.")
 
         for task_config in self.task_list:
             task_name = task_config.get("name")
@@ -118,6 +123,11 @@ class DataQuality(BaseTool):
                     raise e
 
     def merge_results(self, input_path: str, output_path: str) -> None:
+        if self.input is None:
+            raise ValueError("Intermediate input path is not set before merging results.")
+        if self.parent_output_file is None:
+            raise ValueError("Parent output file path is not set before merging results.")
+
         if self.input.endswith(".json"):
             quality_data = utils.load_json_file(self.input)
         elif self.input.endswith(".jsonl"):
@@ -230,7 +240,7 @@ class DataQuality(BaseTool):
                 if child_id not in visited:
                     dfs_path(path + [child_id], visited)
 
-        visited = set()
+        visited: set[str] = set()
         for root_id in root_ids:
             if root_id not in visited:
                 dfs_path([root_id], visited)

@@ -1,16 +1,15 @@
 import os
 import sys
-import time
 import unittest
 from pathlib import Path
-from unittest.mock import ANY, MagicMock, PropertyMock, call, patch
+from unittest.mock import MagicMock, patch
 
 from openai.types.chat.chat_completion import Choice
 
 # Add the parent directory to sys.path to import the necessary modules
 sys.path.append(str(Path(__file__).parent.parent.parent.parent.parent))
 
-from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
+from langchain_core.messages import HumanMessage
 from openai.types.chat import ChatCompletion, ChatCompletionMessage
 
 import grasp.utils.constants as constants
@@ -737,7 +736,7 @@ class TestBaseChatModel(unittest.TestCase):
         import asyncio
 
         model_params = ModelParams(url="http://test-url", auth_token="test-token")
-        result = asyncio.run(model._generate_response_with_retry(messages, model_params))
+        asyncio.run(model._generate_response_with_retry(messages, model_params))
 
         # Verify that AsyncRetrying was configured correctly
         mock_wait_random_exponential.assert_called_once_with(multiplier=1)
@@ -845,7 +844,7 @@ class TestBaseChatModel(unittest.TestCase):
 
         # Call the method and get the result
         model_params = ModelParams(url="http://test-url", auth_token="test-token")
-        result = model._sync_generate_response_with_retry(messages, model_params)
+        model._sync_generate_response_with_retry(messages, model_params)
 
         # Verify that AsyncRetrying was configured correctly
         mock_wait_random_exponential.assert_called_once_with(multiplier=1)

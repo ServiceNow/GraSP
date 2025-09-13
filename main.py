@@ -175,7 +175,9 @@ if __name__ == "__main__":
         full_task_name = f"tasks.{task_name}"
         check_model_availability(full_task_name)
         args.task = full_task_name
-        utils.current_task = full_task_name  # Set current_task to the full task name with prefix
+        utils.current_task = (
+            full_task_name  # Set current_task to the full task name with prefix
+        )
     else:
         check_model_availability(task_name)
         utils.current_task = task_name

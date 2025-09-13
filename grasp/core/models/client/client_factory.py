@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 import httpx
 from httpx import Timeout
@@ -41,8 +41,8 @@ class ClientFactory:
     def create_client(
         cls,
         model_config: Dict[str, Any],
-        url: str = None,
-        auth_token: str = None,
+        url: str,
+        auth_token: Optional[str] = None,
         async_client: bool = False,
     ) -> Any:
         """
@@ -129,8 +129,8 @@ class ClientFactory:
     @staticmethod
     def _create_openai_client(
         model_config: Dict[str, Any],
-        url: str = None,
-        auth_token: str = None,
+        url: str,
+        auth_token: Optional[str] = None,
         async_client: bool = True,
         chat_completions_api: bool = True,
     ) -> OpenAIClient:
@@ -148,7 +148,7 @@ class ClientFactory:
         """
         model_config = utils.get_updated_model_config(model_config)
         utils.validate_required_keys(["url", "auth_token"], model_config, "model")
-        ssl_verify = model_config.get("ssl_verify")
+        ssl_verify: bool = bool(model_config.get("ssl_verify", True))
         ssl_cert = model_config.get("ssl_cert")
         httpx_client = (
             httpx.AsyncClient(http1=True, verify=ssl_verify, cert=ssl_cert)
@@ -170,7 +170,7 @@ class ClientFactory:
     def _create_openai_azure_client(
         model_config: Dict[str, Any],
         url: str,
-        auth_token: str,
+        auth_token: Optional[str] = None,
         async_client: bool = True,
         chat_completions_api: bool = True,
     ) -> OpenAIAzureClient:
@@ -190,7 +190,7 @@ class ClientFactory:
         utils.validate_required_keys(
             ["url", "api_key", "api_version", "model"], model_config, "model"
         )
-        ssl_verify = model_config.get("ssl_verify")
+        ssl_verify: bool = bool(model_config.get("ssl_verify", True))
         ssl_cert = model_config.get("ssl_cert")
         httpx_client = (
             httpx.AsyncClient(http1=True, verify=ssl_verify, cert=ssl_cert)
@@ -215,7 +215,7 @@ class ClientFactory:
     def _create_mistral_client(
         model_config: Dict[str, Any],
         url: str,
-        auth_token: str,
+        auth_token: Optional[str] = None,
         async_client: bool = True,
     ) -> MistralAzure:
         """
@@ -232,7 +232,7 @@ class ClientFactory:
         """
         model_config = utils.get_updated_model_config(model_config)
         utils.validate_required_keys(["url", "auth_token"], model_config, "model")
-        ssl_verify = model_config.get("ssl_verify")
+        ssl_verify: bool = bool(model_config.get("ssl_verify", True))
         ssl_cert = model_config.get("ssl_cert")
         httpx_client = (
             httpx.AsyncClient(
@@ -261,7 +261,7 @@ class ClientFactory:
             ),
         )
 
-        client_kwargs = {
+        client_kwargs: Dict[str, Any] = {
             "azure_api_key": auth_token,
             "azure_endpoint": url,
             "retry_config": retry_config,
@@ -275,7 +275,9 @@ class ClientFactory:
         return client
 
     @staticmethod
-    def _create_http_client(model_config: Dict[str, Any], url: str, auth_token: str) -> HttpClient:
+    def _create_http_client(
+        model_config: Dict[str, Any], url: str, auth_token: Optional[str] = None
+    ) -> HttpClient:
         """
         Create an HTTP client.
 
@@ -289,8 +291,11 @@ class ClientFactory:
         """
         model_config = utils.get_updated_model_config(model_config)
         utils.validate_required_keys(["url", "auth_token"], model_config, "model")
-        ssl_verify = model_config.get("ssl_verify")
+        ssl_verify = bool(model_config.get("ssl_verify", True))
         ssl_cert = model_config.get("ssl_cert")
+        if auth_token is None:
+            # Should be validated by create_client for these model types, but keep a safe check here
+            raise ValueError("Auth token/API key is required for HTTP client creation.")
         auth_token = auth_token.replace("Bearer ", "")
 
         headers = {
@@ -315,7 +320,7 @@ class ClientFactory:
     def _create_ollama_client(
         model_config: Dict[str, Any],
         url: str,
-        auth_token: str = None,
+        auth_token: Optional[str] = None,
         async_client: bool = False,
         chat_completions_api: bool = True,
     ) -> OllamaClient:

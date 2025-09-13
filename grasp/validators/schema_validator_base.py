@@ -1,10 +1,10 @@
 from typing import Any, Optional, Type
 
-from pydantic import BaseModel, ValidationError, create_model
+from pydantic import BaseModel, TypeAdapter, ValidationError
 
 from grasp.core.graph.graph_config import GraphConfig
 from grasp.logger.logger_config import logger
-from grasp.validators.custom_validations import *
+from grasp.validators import custom_validations as custom_validations
 from grasp.validators.yaml_loader import process_custom_fields, resolve_schema_class
 
 
@@ -29,8 +29,8 @@ class SchemaValidator:
         if hasattr(self, "initialized") and self.initialized:
             return
         self.config = graph_config
-        self.schema_class: Type[BaseModel] = None
-        self.fields: dict[str, Any] = []
+        self.schema_class: Optional[Type[BaseModel]] = None
+        self.fields: list[dict[str, Any]] = []
 
         # Access schema config from graphConfig object
         schema_config = self.config.schema_config
@@ -64,10 +64,9 @@ class SchemaValidator:
         """
         try:
             # Dynamically create a Pydantic model with the field name and expected type
-            model = create_model("DynamicModel", **{field_name: (expected_type, ...)})
-
-            # Validate the field value against the dynamically created model
-            model_instance = model(**{field_name: field_value})
+            # Use TypeAdapter (Pydantic v2) to validate a single value against the expected type
+            adapter = TypeAdapter(expected_type)
+            adapter.validate_python(field_value)
 
             # If validation succeeds, it means the field_value is valid
             return True
@@ -122,7 +121,7 @@ class SchemaValidator:
         Validate additional rules like `is_greater_than`, `is_not_empty`, etc.
         This method can be extended in subclasses to handle more rules.
         """
-        """Dynamically validate additional rules from custom_validations.py."""
+        """Dynamically validate additional rules from custom_validations module."""
         try:
             # Look for custom rules in the schema and apply them to the field
             for key, value in field.items():
@@ -132,19 +131,15 @@ class SchemaValidator:
                     # Check if the method corresponding to the rule exists in custom_validations.py
                     validate_function_name = f"validate_{rule}"
 
-                    if validate_function_name in globals() and callable(
-                        globals()[validate_function_name]
-                    ):
-                        # Check if the function exists in custom_validations.py (or globals) and is callable
-                        validate_function = globals()[validate_function_name]
-
+                    validate_function = getattr(custom_validations, validate_function_name, None)
+                    if callable(validate_function):
                         # Call the validation function and pass the field value and rule value
                         is_valid = validate_function(field_value, field_name, rule_value)
                         if not is_valid:
                             return False
                     else:
                         logger.error(
-                            f"Validation function '{validate_function_name}' not found in custom_validations.py for field '{field_name}'."
+                            f"Validation function '{validate_function_name}' not found in custom_validations for field '{field_name}'."
                         )
                         return False
             return True

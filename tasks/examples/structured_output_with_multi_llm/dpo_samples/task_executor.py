@@ -1,11 +1,12 @@
 import json
 from typing import Any, Dict, List
 
-from langchain_core.messages import AIMessage
 
-from grasp.core.base_task_executor import BaseTaskExecutor
 from grasp.core.graph.functions.edge_condition import EdgeCondition
-from grasp.core.graph.functions.node_processor import NodePostProcessor, NodePreProcessor
+from grasp.core.graph.functions.node_processor import (
+    NodePostProcessor,
+    NodePreProcessor,
+)
 from grasp.core.graph.grasp_state import GraspState
 from grasp.logger.logger_config import logger
 from grasp.processors.output_record_generator import BaseOutputGenerator
@@ -30,7 +31,9 @@ class GenerateSamplesPreProcessor(NodePreProcessor):
         """
         # Extract user prompt from conversation in the state
         if "user_prompt" not in state and "conversation" in state:
-            user_messages = [msg for msg in state["conversation"] if msg["role"] == "user"]
+            user_messages = [
+                msg for msg in state["conversation"] if msg["role"] == "user"
+            ]
             if user_messages:
                 state["user_prompt"] = user_messages[0]["content"]
 
@@ -47,7 +50,9 @@ class GenerateSamplesPreProcessor(NodePreProcessor):
 
         # Safety check - initialize samples_ratings if not present
         if "samples_ratings" not in state:
-            logger.warning("samples_ratings not found in state, initializing as empty list")
+            logger.warning(
+                "samples_ratings not found in state, initializing as empty list"
+            )
             state["samples_ratings"] = []
 
         return state
@@ -102,11 +107,15 @@ class RateSamplesPreProcessor(NodePreProcessor):
         # Format each model response for the judge to evaluate
         for model, response in model_responses_dict.items():
             content = self._extract_content(response)
-            asst_responses += f"[Start of {model} Answer]\n{content}\n[End of {model} Answer]\n\n"
+            asst_responses += (
+                f"[Start of {model} Answer]\n{content}\n[End of {model} Answer]\n\n"
+            )
 
         # Set assistant_responses for the rating node
         state["assistant_responses"] = asst_responses
-        logger.info(f"RateSamplesPreProcessor - Set assistant_responses: {asst_responses[:100]}...")
+        logger.info(
+            f"RateSamplesPreProcessor - Set assistant_responses: {asst_responses[:100]}..."
+        )
 
         return state
 
@@ -133,7 +142,11 @@ class RateSamplesPreProcessor(NodePreProcessor):
             elif isinstance(response, dict) and "message" in response:
                 # It's already a structured output dict
                 return response["message"]
-            elif isinstance(response, list) and response and hasattr(response[0], "content"):
+            elif (
+                isinstance(response, list)
+                and response
+                and hasattr(response[0], "content")
+            ):
                 # It's a list of AIMessage objects
                 return response[0].content
             elif hasattr(response, "content"):
@@ -166,7 +179,9 @@ class RateSamplesPostProcessor(NodePostProcessor):
         """
         message_content = response.message.content
 
-        logger.info(f"RateSamplesPostProcessor - Raw response: {message_content[:200]}...")
+        logger.info(
+            f"RateSamplesPostProcessor - Raw response: {message_content[:200]}..."
+        )
 
         # Extract JSON ratings from response content
         samples_ratings = utils.extract_and_load_json(message_content)
@@ -188,7 +203,9 @@ class RateSamplesPostProcessor(NodePostProcessor):
         # Add the ratings to the state - samples_ratings should already be initialized
         if "samples_ratings" not in state:
             # Fallback initialization in case the data transform didn't run
-            logger.warning("samples_ratings not found in state, initializing as empty list")
+            logger.warning(
+                "samples_ratings not found in state, initializing as empty list"
+            )
             state["samples_ratings"] = []
 
         state["samples_ratings"].append(samples_ratings)
@@ -248,7 +265,9 @@ class ShouldContinueCondition(EdgeCondition):
                     else:  # 8,9,10
                         buckets[2] = 1
                 except (ValueError, TypeError) as e:
-                    logger.warning(f"Invalid rating format: {sample_rating}, error: {e}")
+                    logger.warning(
+                        f"Invalid rating format: {sample_rating}, error: {e}"
+                    )
 
         logger.info(f"ShouldContinueCondition - Buckets: {buckets}")
 
@@ -303,7 +322,9 @@ class DpoSamplesOutputGenerator(BaseOutputGenerator):
         contents = []
         samples_ratings_list = state.get("samples_ratings", [])
 
-        logger.info(f"_generate_asst_content - samples_ratings_list: {samples_ratings_list}")
+        logger.info(
+            f"_generate_asst_content - samples_ratings_list: {samples_ratings_list}"
+        )
 
         # Process all ratings
         for samples_rating in samples_ratings_list:
@@ -332,7 +353,9 @@ class DpoSamplesOutputGenerator(BaseOutputGenerator):
         contents = sorted(
             contents,
             key=lambda x: (
-                float(x["judge_rating"]) if isinstance(x["judge_rating"], (int, float, str)) else 0
+                float(x["judge_rating"])
+                if isinstance(x["judge_rating"], (int, float, str))
+                else 0
             ),
             reverse=True,
         )

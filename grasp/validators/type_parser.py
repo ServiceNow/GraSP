@@ -1,10 +1,14 @@
-from typing import Any, Set, Tuple, Type
+import types
+from typing import Any, Union
 
 
 class TypeParseError(Exception):
     """Custom exception for type parsing errors"""
 
     pass
+
+
+ParsedType = Union[type, types.GenericAlias, Any]
 
 
 class TypeParser:
@@ -27,7 +31,7 @@ class TypeParser:
         self.pos = 0
         self.input = ""
 
-    def parse(self, type_str: str) -> Type:
+    def parse(self, type_str: str) -> ParsedType:
         """Main parsing function that processes the type string and returns actual type"""
         try:
             # Reset state
@@ -49,7 +53,7 @@ class TypeParser:
         except IndexError:
             raise TypeParseError("Unexpected end of input - missing closing bracket?")
 
-    def _parse_type(self) -> Type:
+    def _parse_type(self) -> ParsedType:
         """Parse a single type, which may be nested"""
         # Get the base type
         base_type = ""
@@ -63,7 +67,7 @@ class TypeParser:
         if base_type not in self.VALID_TYPES:
             raise TypeParseError(f"Invalid type '{base_type}'")
 
-        type_obj = self.VALID_TYPES[base_type]
+        type_obj: ParsedType = self.VALID_TYPES[base_type]
 
         # Handle nested types
         if self.pos < len(self.input) and self.input[self.pos] == "[":
@@ -84,16 +88,18 @@ class TypeParser:
                 # Parse value type
                 value_type = self._parse_type()
 
-                type_obj = dict[key_type, value_type]
+                # Build a parameterized dict type at runtime without confusing static type checkers
+                type_obj = dict.__class_getitem__((key_type, value_type))
             else:
                 # Parse inner type for list, set, tuple
                 inner_type = self._parse_type()
                 if base_type == "list":
-                    type_obj = list[inner_type]
+                    type_obj = list.__class_getitem__(inner_type)
                 elif base_type == "set":
-                    type_obj = Set[inner_type]
+                    # Use built-in set's __class_getitem__ to avoid mypy complaints
+                    type_obj = set.__class_getitem__(inner_type)
                 elif base_type == "tuple":
-                    type_obj = Tuple[inner_type, ...]
+                    type_obj = tuple.__class_getitem__((inner_type, ...))
 
             # Expect closing bracket
             if self.pos >= len(self.input) or self.input[self.pos] != "]":

@@ -41,14 +41,14 @@ class TestClientFactory(unittest.TestCase):
         mock_validate.side_effect = ValueError("Missing required key: model_type")
         model_config = {"url": "http://test-url.com"}
         with self.assertRaises(ValueError):
-            ClientFactory.create_client(model_config)
+            ClientFactory.create_client(model_config, "http://test-url.com")
 
     def test_create_client_missing_url(self):
         """Test create_client with missing model_type key"""
         model_config = {"url": "http://test-url.com", "model_type": "vllm"}
-        with self.assertRaises(ValueError) as context:
+        with self.assertRaises(TypeError) as context:
             ClientFactory.create_client(model_config)
-        self.assertIn("URL is required for client creation", str(context.exception))
+        self.assertIn("missing 1 required positional argument: 'url'", str(context.exception))
 
     def test_create_client_missing_auth_token(self):
         """Test create_client with missing model_type key"""
@@ -199,45 +199,6 @@ class TestClientFactory(unittest.TestCase):
 
         model_url = "http://openai-test.com"
         auth_token = "test-key"
-
-        # Test with valid config
-        model_config = {
-            "model_type": "azure_openai",
-            "url": model_url,
-            "api_key": auth_token,
-            "api_version": "2023-05-15",
-            "model": "gpt-4",
-            "timeout": 90,
-            "max_retries": 2,
-        }
-
-        client = ClientFactory._create_openai_azure_client(model_config, model_url, auth_token)
-
-        # Verify the client was created with the right parameters
-        mock_validate.assert_called_once_with(
-            ["url", "api_key", "api_version", "model"], model_config, "model"
-        )
-        self.assertIsNotNone(client)
-        mock_openai_client.assert_called_once()
-
-        # Check if parameters were passed correctly
-        args, kwargs = mock_openai_client.call_args
-        self.assertEqual(kwargs["azure_endpoint"], model_url)
-        self.assertEqual(kwargs["api_key"], auth_token)
-        self.assertEqual(kwargs["api_version"], "2023-05-15")
-        self.assertEqual(kwargs["azure_deployment"], "gpt-4")
-        self.assertEqual(kwargs["timeout"], 90)
-        self.assertEqual(kwargs["max_retries"], 2)
-
-    @patch("grasp.core.models.client.client_factory.OpenAIAzureClient")
-    @patch("grasp.core.models.client.client_factory.utils.validate_required_keys")
-    def test_create_openai_azure_client(self, mock_validate, mock_openai_client):
-        """Test _create_openai_client method"""
-        # Setup mock
-        mock_openai_client.return_value = MagicMock()
-
-        model_url = "http://openai-test1.com"
-        auth_token = "test-key1"
 
         # Test with valid config
         model_config = {

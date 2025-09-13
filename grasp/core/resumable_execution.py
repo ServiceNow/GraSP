@@ -5,9 +5,9 @@ import os
 import signal
 import time
 from collections import deque
-from typing import Any, Optional, Set
+from typing import Any, Deque, Dict, Optional, Set
 
-import datasets
+import datasets  # type: ignore[import-untyped]
 
 from grasp.logger.logger_config import logger
 from grasp.utils import constants, utils
@@ -76,8 +76,8 @@ class StreamingPositionTracker(DatasetPositionTracker):
         super().__init__("streaming")
         self.current_position = 0
         self.highest_seen_position = 0
-        self.recent_ids = deque(maxlen=window_size)
-        self.position_to_record_id = {}
+        self.recent_ids: Deque[str] = deque(maxlen=window_size)
+        self.position_to_record_id: Dict[int, str] = {}
 
     def advance_to_position(self, dataset, position: int):
         """
@@ -128,19 +128,19 @@ class ResumableExecutionManager:
 
         self.metadata_file = os.path.join(self.output_dir, "metadata.json")
         self.processed_records: Set[str] = set()
-        self.in_process_records = set()
+        self.in_process_records: Set[str] = set()
         self.last_save_time = time.time()
         self.save_interval = 10
         self.window_size = window_size
         self.metadata_initialized = False
 
-        self.record_id_to_position = {}
+        self.record_id_to_position: Dict[str, int] = {}
 
         self.total_records_processed = 0
 
         self.in_memory_tracker = InMemoryPositionTracker()
         self.streaming_tracker = StreamingPositionTracker(window_size)
-        self.position_tracker = None
+        self.position_tracker: Optional[DatasetPositionTracker] = None
 
         self._setup_handlers()
 
@@ -516,7 +516,7 @@ class ResumableExecutionManager:
 
         try:
             with open(self.metadata_file, "r") as f:
-                metadata = json.load(f)
+                metadata: dict[str, Any] = json.load(f)
                 logger.info(f"Loaded metadata from {self.metadata_file}")
             return metadata
 

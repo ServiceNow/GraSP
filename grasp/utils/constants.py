@@ -82,7 +82,7 @@ DEFAULT_TIMEOUT = 120
 LIST_SEPARATOR = "|"
 
 # TODO: Unused variable, to be removed later
-COMPLETION_ONLY_MODELS = []
+COMPLETION_ONLY_MODELS: list[str] = []
 
 # constants for template based payload
 PAYLOAD_CFG_FILE = "config/payload_cfg.json"

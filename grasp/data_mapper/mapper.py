@@ -2,11 +2,10 @@ from typing import Any
 
 from pydantic import ValidationError
 
-from grasp.core.graph.graph_config import GraphConfig
 from grasp.data_mapper.helper import PipelineConfig, transform_registry
 from grasp.data_mapper.pipelines import PipelineFactory
 from grasp.logger.logger_config import logger
-from grasp.validators.custom_schemas import CoreLLMDataFabricFormat, MetaInfo, PipelineStep
+from grasp.validators.custom_schemas import CoreLLMDataFabricFormat, MetaInfo
 
 
 class DataMapper:
@@ -21,7 +20,12 @@ class DataMapper:
         """
         self.config = config
         self.transform_registry = transform_registry  # Registry for managing transformations
-        self.transform_type = config.get("type")  # Get transformation type (sft/dpo)
+        # Normalize and validate transformation type (expects 'sft' or 'dpo')
+        self.transform_type: str = str(config.get("type", ""))
+        if not self.transform_type:
+            raise ValueError(
+                "Transform type must be provided in config['type'] (e.g., 'sft' or 'dpo')."
+            )
 
         # Create the pipeline using PipelineFactory based on the transform type
         pipeline_factory = PipelineFactory(self.transform_type)
@@ -36,7 +40,7 @@ class DataMapper:
         """Map a single data item through the transform pipeline."""
         try:
             # Setting up the context for transformation
-            context = dict()
+            context: dict[str, Any] = {}
             context["__old_item__"] = old_item
             # logger.info(f"Initial context setup for item {old_item.get('id')}: {context}")
 
@@ -207,7 +211,7 @@ class DataMapper:
 
             # Validate the row and handle any validation errors
             try:
-                validated = CoreLLMDataFabricFormat(**row_model.model_dump())
+                CoreLLMDataFabricFormat(**row_model.model_dump())
                 rows.append(row_model.model_dump())
             except ValidationError as e:
                 logger.warning(f"Validation error: {e}. Skipping row.")

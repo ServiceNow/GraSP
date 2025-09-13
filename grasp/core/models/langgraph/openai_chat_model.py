@@ -1,7 +1,7 @@
 from typing import Any
 
 import openai
-from langchain_core.messages import AnyMessage, BaseMessage
+from langchain_core.messages import BaseMessage
 
 from grasp.core.models.custom_models import ModelParams
 from grasp.core.models.langgraph.grasp_base_chat_model import GraspBaseChatModel
@@ -66,7 +66,7 @@ class CustomOpenAIChatModel(GraspBaseChatModel):
 
     async def _generate_response(
         self,
-        messages: list[AnyMessage],
+        messages: list[BaseMessage],
         model_params: ModelParams,
         async_client: bool = True,
         **kwargs: Any,
@@ -96,7 +96,7 @@ class CustomOpenAIChatModel(GraspBaseChatModel):
             # Build request and send it
             payload = self._client.build_request(messages=messages, **kwargs)
             response = await self._client.send_request(
-                payload, self._config.get("model"), self._generation_params
+                payload, str(self._config.get("model")), self._generation_params
             )
         except openai.RateLimitError as e:
             logger.warn(f"AzureOpenAI api request exceeded rate limit: {e}")
@@ -105,13 +105,13 @@ class CustomOpenAIChatModel(GraspBaseChatModel):
         except Exception as x:
             response = f"{constants.ERROR_PREFIX} Http request failed {x}"
             logger.error(response)
-            response_code = self._get_status_from_body(x)
-            response_code = response_code if response_code else 999
+            rcode = self._get_status_from_body(x)
+            response_code = rcode if rcode else 999
         return response, response_code
 
     def _sync_generate_response(
         self,
-        messages: list[AnyMessage],
+        messages: list[BaseMessage],
         model_params: ModelParams,
         async_client: bool = True,
         **kwargs: Any,
@@ -141,7 +141,7 @@ class CustomOpenAIChatModel(GraspBaseChatModel):
             # Build request and send it
             payload = self._client.build_request(messages=messages, **kwargs)
             response = self._client.send_request(
-                payload, self._config.get("model"), self._generation_params
+                payload, str(self._config.get("name")), self._generation_params
             )
         except openai.RateLimitError as e:
             logger.warn(f"AzureOpenAI api request exceeded rate limit: {e}")
@@ -150,6 +150,6 @@ class CustomOpenAIChatModel(GraspBaseChatModel):
         except Exception as x:
             response = f"{constants.ERROR_PREFIX} Http request failed {x}"
             logger.error(response)
-            response_code = self._get_status_from_body(x)
-            response_code = response_code if response_code else 999
+            rcode = self._get_status_from_body(x)
+            response_code = rcode if rcode else 999
         return response, response_code

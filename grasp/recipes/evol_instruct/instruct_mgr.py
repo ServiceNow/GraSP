@@ -4,7 +4,7 @@ from grasp.recipes.evol_instruct import breadth, depth
 
 
 def get_instruction(instruction: str, algorithm="random") -> str:
-    evol_prompts = []
+    evol_prompts: list[str] = []
     evol_prompts.append(depth.createConstraintsPrompt(instruction))
     evol_prompts.append(depth.createDeepenPrompt(instruction))
     evol_prompts.append(depth.createConcretizingPrompt(instruction))

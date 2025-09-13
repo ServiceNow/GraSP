@@ -123,7 +123,10 @@ class TestToolUtils(unittest.TestCase):
         # Mock the base configs loaded from YAML
         mock_load_yaml.return_value = {
             "model1": {"model_type": "vllm", "parameters": {"temperature": 0.7}},
-            "model2": {"model_type": "azure_openai", "parameters": {"temperature": 1.0}},
+            "model2": {
+                "model_type": "azure_openai",
+                "parameters": {"temperature": 1.0},
+            },
         }
 
         # Set up environment variables with pipe-separated URLs

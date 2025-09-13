@@ -34,7 +34,7 @@ class LoggerAdapter:
 
     def __init__(self, external_logger: Optional[ExternalLoggerProtocol] = None):
         self._external_logger = external_logger
-        self._internal_logger = None
+        self._internal_logger: logging.Logger = logging.getLogger()
 
         if not external_logger:
             self._setup_internal_logger()
@@ -123,8 +123,7 @@ class LoggerAdapter:
     def reset_to_internal(self) -> None:
         """Reset to using GraSP's internal logger."""
         self._external_logger = None
-        if not self._internal_logger:
-            self._setup_internal_logger()
+        self._setup_internal_logger()
 
     def is_using_external(self) -> bool:
         """Check if currently using an external logger."""

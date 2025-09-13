@@ -38,7 +38,10 @@ class TestCustomOllama(unittest.TestCase):
                 "enabled": True,
                 "schema": {
                     "type": "object",
-                    "properties": {"name": {"type": "string"}, "age": {"type": "integer"}},
+                    "properties": {
+                        "name": {"type": "string"},
+                        "age": {"type": "integer"},
+                    },
                     "required": ["name", "age"],
                 },
             },
@@ -136,7 +139,9 @@ class TestCustomOllama(unittest.TestCase):
         # Verify client calls
         mock_client.build_request.assert_called_once_with(formatted_prompt="Hello, how are you?")
         mock_client.send_request.assert_awaited_once_with(
-            {"prompt": "Hello, how are you?"}, "qwen3:1.7b", self.completions_config["parameters"]
+            {"prompt": "Hello, how are you?"},
+            "qwen3:1.7b",
+            self.completions_config["parameters"],
         )
 
     @patch("grasp.core.models.custom_models.ClientFactory")
@@ -211,11 +216,16 @@ class TestCustomOllama(unittest.TestCase):
 
         # Verify client calls with format parameter
         expected_schema = TestPerson.model_json_schema()
-        extra_params = {**self.structured_config["parameters"], "format": expected_schema}
+        extra_params = {
+            **self.structured_config["parameters"],
+            "format": expected_schema,
+        }
 
         mock_client.build_request.assert_called_once_with(messages=self.messages)
         mock_client.send_request.assert_awaited_once_with(
-            {"messages": [{"role": "user", "content": "Hello"}]}, "qwen3:1.7b", extra_params
+            {"messages": [{"role": "user", "content": "Hello"}]},
+            "qwen3:1.7b",
+            extra_params,
         )
 
     @patch("grasp.core.models.custom_models.ClientFactory")

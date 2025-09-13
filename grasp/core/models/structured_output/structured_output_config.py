@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import importlib
 import inspect
-from typing import Any, Optional, Type
+from typing import Any, Dict, Optional, Type
 
-from pydantic import BaseModel, create_model
+from pydantic import BaseModel, Field, create_model
 
 from grasp.logger.logger_config import logger
 
@@ -14,9 +14,9 @@ class SchemaConfigParser:
 
     def __init__(self, config: dict[str, Any]):
         self.config = config
-        self.schema_type = None  # Will be 'class' or 'schema'
-        self.schema_data = None
-        self.class_path = None
+        self.schema_type: Optional[str] = None  # Will be 'class' or 'schema'
+        self.schema_data: Optional[dict[Any, Any]] = None
+        self.class_path: Optional[str] = None
 
         self._parse_schema()
 
@@ -162,7 +162,7 @@ class StructuredOutputConfig:
         try:
             module_path, class_name = class_path.rsplit(".", 1)
             module = importlib.import_module(module_path)
-            pydantic_class = getattr(module, class_name)
+            pydantic_class: Type[BaseModel] = getattr(module, class_name)
 
             if not issubclass(pydantic_class, BaseModel):
                 raise ValueError(f"Class {class_name} is not a Pydantic BaseModel")
@@ -175,19 +175,20 @@ class StructuredOutputConfig:
     def _create_pydantic_from_yaml(self, schema_dict: dict[str, Any]) -> Type[BaseModel]:
         """Create pydantic model from YAML schema definition"""
         try:
-            fields = {}
+            field_definitions: Dict[str, Any] = {}
             for field_name, field_config in schema_dict.get("fields", {}).items():
                 field_type = self._get_python_type(field_config.get("type", "str"))
-                field_default = field_config.get("default", ...)
-                field_description = field_config.get("description", "")
-
-                if field_default != ...:
-                    fields[field_name] = (field_type, field_default)
-                else:
-                    fields[field_name] = (field_type, ...)
+                default = field_config.get("default", ...)
+                description = field_config.get("description", "")
+                # Use Field to attach metadata
+                field_definitions[field_name] = (
+                    field_type,
+                    Field(default=default, description=description),
+                )
 
             model_name = schema_dict.get("name", "DynamicModel")
-            return create_model(model_name, **fields)
+            model: Type[BaseModel] = create_model(model_name, **field_definitions)
+            return model
         except Exception as e:
             logger.error(f"Failed to create pydantic model from YAML schema: {e}")
             raise

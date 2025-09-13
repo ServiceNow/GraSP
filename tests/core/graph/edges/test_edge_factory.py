@@ -5,15 +5,10 @@ import sys
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "..")))
 
 from types import SimpleNamespace
-from unittest.mock import MagicMock, Mock, mock_open, patch
 
 import pytest
-from datasets import Dataset, Features, IterableDataset, Value
 
-from grasp.core.base_task_executor import BaseTaskExecutor
-from grasp.core.dataset.dataset_config import OutputType
 from grasp.core.graph.edges.edge_factory import BaseEdge, EdgeFactory
-from grasp.core.graph.graph_config import GraphConfig
 from grasp.core.graph.nodes.base_node import BaseNode, NodeType
 from grasp.core.graph.nodes.special_node import SpecialNode
 
@@ -517,11 +512,6 @@ def test_path_map_invalid_target_raises(dummy_nodes):
     Assertions:
         - Calling _get_node on an invalid path_map target raises RuntimeError.
     """
-    edge_config = {
-        "from": "node_a",
-        "condition": "some.condition.func",
-        "path_map": {"yes": "non_existent"},
-    }
 
     factory = EdgeFactory([], dummy_nodes, {})
     with pytest.raises(RuntimeError, match="not found"):

@@ -12,7 +12,7 @@ def future_deprecation(reason=None):
             warnings.warn(msg, DeprecationWarning, stacklevel=2)
             return func(*args, **kwargs)
 
-        wrapper._future_deprecation = True
+        setattr(wrapper, "_future_deprecation", True)  # type: ignore[attr-defined]
         return wrapper
 
     return decorator

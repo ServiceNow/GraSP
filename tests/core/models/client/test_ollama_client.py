@@ -91,7 +91,7 @@ class TestOllamaClient(unittest.TestCase):
             "timeout": 120,
         }
 
-        client = OllamaClient(async_client=False, **custom_config)
+        OllamaClient(async_client=False, **custom_config)
 
         # Verify client was created with custom configuration
         mock_client.assert_called_once_with(host="http://custom-host:11434", timeout=120)
@@ -218,7 +218,10 @@ class TestOllamaClient(unittest.TestCase):
         client = OllamaClient(async_client=False, **self.base_config)
 
         # Create a mock response
-        mock_response = {"id": "test-id", "choices": [{"message": {"content": "Hello!"}}]}
+        mock_response = {
+            "id": "test-id",
+            "choices": [{"message": {"content": "Hello!"}}],
+        }
         client_instance.chat.return_value = mock_response
 
         # Create a test payload
@@ -254,18 +257,25 @@ class TestOllamaClient(unittest.TestCase):
         client.tools = tools
 
         # Create a mock response
-        mock_response = {"id": "test-id", "choices": [{"message": {"content": "Hello!"}}]}
+        mock_response = {
+            "id": "test-id",
+            "choices": [{"message": {"content": "Hello!"}}],
+        }
         client_instance.chat.return_value = mock_response
 
         # Create a test payload
         payload = {"messages": [{"role": "user", "content": "Hello"}]}
 
         # Send the request
-        response = client.send_request(payload, "qwen3:1.7b", {})
+        client.send_request(payload, "qwen3:1.7b", {})
 
         # Verify the request was made with tools
         client_instance.chat.assert_called_once_with(
-            model="qwen3:1.7b", messages=payload["messages"], options={}, tools=tools, format=None
+            model="qwen3:1.7b",
+            messages=payload["messages"],
+            options={},
+            tools=tools,
+            format=None,
         )
 
     @patch("grasp.core.models.client.ollama_client.Client")
@@ -293,7 +303,10 @@ class TestOllamaClient(unittest.TestCase):
         # Verify the request was made correctly
         self.assertEqual(response, mock_response)
         client_instance.generate.assert_called_once_with(
-            model="qwen3:1.7b", prompt=payload["prompt"], options=generation_params, format=None
+            model="qwen3:1.7b",
+            prompt=payload["prompt"],
+            options=generation_params,
+            format=None,
         )
 
     @patch("grasp.core.models.client.ollama_client.Client")

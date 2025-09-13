@@ -74,7 +74,7 @@ class ConversationPreTokenizationTask:
         """
         messages = record["conversation"]
         inputs = messages[:-1]  # All messages except the last one
-        target = messages[-1]  # The last message as the target
+        messages[-1]  # The last message as the target
 
         inputs_pretokenized = tokenizer.apply_chat_template(
             inputs, tokenize=False, add_generation_prompt=True

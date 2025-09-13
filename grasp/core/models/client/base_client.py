@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import List, Optional, Sequence
+from typing import Any, Dict, List, Optional, Sequence
 
 from langchain_core.language_models import LanguageModelInput
 from langchain_core.messages import BaseMessage, convert_to_messages
@@ -47,16 +47,16 @@ class BaseClient(ABC):
     @abstractmethod
     def build_request(
         self,
-        messages: List[BaseMessage],
-        formatted_prompt: str,
+        messages: Optional[Sequence[BaseMessage]] = None,
+        formatted_prompt: Optional[str] = None,
         stop: Optional[List[str]] = None,
-        **kwargs,
+        **kwargs: Any,
     ):
         """
         Build a request payload for the model.
 
         Args:
-            messages (List[BaseMessage]): The input messages to the model.
+            messages (Sequence[BaseMessage]): The input messages to the model.
             formatted_prompt (str): The formatted prompt to pass to the model.
             stop (Optional[List[str]], optional): List of strings to stop generating at. Defaults to None.
             **kwargs: Additional keyword arguments to include in the payload.
@@ -69,15 +69,37 @@ class BaseClient(ABC):
         """
         raise NotImplementedError("Build request must be implemented")
 
+    def build_request_with_payload(self, payload: Dict[str, Any], **kwargs: Any) -> Dict[str, Any]:
+        """
+        Convenience method to construct a request directly from a payload dict.
+
+        This is an optional helper. Subclasses may override to customize behavior,
+        but are not required to implement it.
+
+        Args:
+            payload: Base payload dictionary.
+            **kwargs: Additional fields to merge into the payload.
+
+        Returns:
+            The merged payload dictionary.
+        """
+        payload.update(kwargs)
+        return payload
+
     @abstractmethod
-    def send_request(self, payload, model_name: str, **kwargs):
+    def send_request(
+        self,
+        payload: Any,
+        model_name: str,
+        generation_params: Optional[Dict[str, Any]] = None,
+    ):
         """
         Send the request payload to the model and return the response.
 
         Args:
             payload (dict): The request payload to send.
             model_name (str): The name of the model to send the request to.
-            **kwargs: Additional keyword arguments to include in the request.
+            generation_params: Optional[Dict[str, Any]]: Additional keyword arguments to include in the request.
 
         Returns:
             dict: The response from the model.
@@ -86,3 +108,19 @@ class BaseClient(ABC):
             NotImplementedError: This method must be implemented by subclasses.
         """
         raise NotImplementedError("Send request must be implemented")
+
+    async def async_send_request(
+        self,
+        payload: Dict[str, Any],
+        model_name: Optional[str] = None,
+        generation_params: Optional[Dict[str, Any]] = None,
+    ) -> Any:
+        """
+        Optional async helper to send a request. By default, this delegates to the
+        synchronous send_request in a thread, so subclasses don't have to implement
+        an async variant unless they want custom behavior.
+
+        Returns:
+            The response from the model.
+        """
+        pass

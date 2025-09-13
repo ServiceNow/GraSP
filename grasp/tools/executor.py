@@ -34,14 +34,16 @@ class ToolExecutor:
         )
 
         self.temp_dir = tempfile.TemporaryDirectory()
-        self.current_path = None
-        self.final_output_path = None
+        self.current_path: Optional[str] = None
+        self.final_output_path: Optional[str] = None
         self.available_tool_names = ToolRegistry.available_tools()
 
     def execute(self) -> str:
         self._load_input()
         self._run_tool_chain()
         self._handle_output_sink()
+        if self.final_output_path is None:
+            raise ValueError("No final output path")
         return self.final_output_path
 
     def _load_input(self) -> None:
@@ -52,13 +54,19 @@ class ToolExecutor:
 
         if self.source_config.type == DataSourceType.HUGGINGFACE:
             data = HuggingFaceHandler(self.source_config).read()
+            # Convert potential iterator to a concrete list for typing correctness
+            records: list[dict[str, Any]] = data if isinstance(data, list) else list(data)
             self.current_path = os.path.join(self.temp_dir.name, "input.jsonl")
-            FileHandler.write(data, self.current_path)
+            file_handler = FileHandler(self.source_config, self.sink_config)
+            file_handler.write(records, self.current_path)
 
         elif self.source_config.type == DataSourceType.DISK_FILE:
-            if not os.path.exists(self.source_config.file_path):
-                raise FileNotFoundError(f"Input file not found: {self.source_config.file_path}")
-            self.current_path = self.source_config.file_path
+            path = self.source_config.file_path
+            if not path:
+                raise ValueError("Input file_path must be set for DISK_FILE source")
+            if not os.path.exists(path):
+                raise FileNotFoundError(f"Input file not found: {path}")
+            self.current_path = path
 
         else:
             raise ValueError(f"Unsupported source type: {self.source_config.type}")
@@ -67,7 +75,9 @@ class ToolExecutor:
         if not self.config.tools:
             logger.warning("No tools defined in configuration")
             return
-
+        if self.current_path is None:
+            logger.warning("No input path provided")
+            return
         tool_names = list(self.config.tools.keys())
 
         for step_index, (tool_name, tool_config) in enumerate(self.config.tools.items()):
@@ -98,6 +108,8 @@ class ToolExecutor:
     def _resolve_output_path(self, tool_name: str, step_index: int, is_last_tool: bool) -> str:
         if is_last_tool:
             if self.sink_config and self.sink_config.type != OutputType.HUGGINGFACE:
+                if self.sink_config.file_path is None:
+                    raise ValueError("Output file path is required for non-Hugging Face sink")
                 return self.sink_config.file_path
             else:
                 output_dir = os.path.join(constants.ROOT_DIR, "tools", "tool_runs")
@@ -120,6 +132,12 @@ class ToolExecutor:
 
     def _upload_to_huggingface(self) -> None:
         try:
+            if self.sink_config is None:
+                raise ValueError("Output sink_config is missing")
+            if self.sink_config.repo_id is None:
+                raise ValueError("Output repo_id is required in sink_config for Hugging Face sink")
+            if self.final_output_path is None:
+                raise ValueError("Output file path to be loaded for Hugging Face sink is missing")
             logger.info(f"Uploading to Hugging Face: {self.sink_config.repo_id}")
             with open(self.final_output_path, "r", encoding="utf-8") as f:
                 data = (
@@ -127,17 +145,27 @@ class ToolExecutor:
                     if self.final_output_path.endswith(".json")
                     else [json.loads(line) for line in f if line.strip()]
                 )
-            HuggingFaceHandler(self.sink_config).write(data)
+            HuggingFaceHandler(self.source_config, self.sink_config).write(data)
             logger.info("Upload complete")
         except Exception as e:
             logger.error(f"Upload failed: {e}")
             raise
 
     def _copy_to_sink(self) -> None:
-        sink_path = self.sink_config.file_path
-        if os.path.abspath(sink_path) != os.path.abspath(self.final_output_path):
+        if self.sink_config is None:
+            raise ValueError("Output sink_config is missing")
+        sink_path_opt = self.sink_config.file_path
+        if sink_path_opt is None:
+            raise ValueError("Output file path is required for non-Hugging Face sink")
+        if self.final_output_path is None:
+            raise ValueError("final_output_path is not set before copying to sink")
+
+        sink_path: str = sink_path_opt
+        final_path: str = self.final_output_path
+
+        if os.path.abspath(sink_path) != os.path.abspath(final_path):
             os.makedirs(os.path.dirname(sink_path), exist_ok=True)
-            shutil.copyfile(self.final_output_path, sink_path)
+            shutil.copyfile(final_path, sink_path)
             logger.info(f"Output copied to sink: {sink_path}")
             self.final_output_path = sink_path
         else:
@@ -151,13 +179,14 @@ def run_tool(
     output_path: Optional[str] = None,
 ) -> str:
     """Convenience method to run a single tool."""
-    config_dict = {
-        "data_config": {"source": {"type": "disk", "file_path": input_path}},
+    data_config: dict[str, Any] = {"source": {"type": "disk", "file_path": input_path}}
+    config_dict: dict[str, Any] = {
+        "data_config": data_config,
         "tools": {tool_name: {"config": config or {}}},
     }
 
     if output_path:
-        config_dict["data_config"]["sink"] = {"type": "jsonl", "file_path": output_path}
+        data_config["sink"] = {"type": "jsonl", "file_path": output_path}
 
     executor = ToolExecutor(config_dict)
     return executor.execute()

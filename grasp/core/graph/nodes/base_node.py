@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from enum import Enum
-from typing import Any
+from typing import Any, List, Optional
 
 from grasp.utils import utils
 
@@ -37,14 +37,16 @@ class BaseNode(ABC):
 
     """
 
-    def __init__(self, name, config: dict):
+    def __init__(self, name, config: Optional[dict[str, Any]] = None):
         """
         Node constructor to build the Node object
         :param name: node name
         :param config: node configuration
         """
         # name of the node defined in yaml file
-        self.name = name
+        self.name: str = name
+        self.node_type: str
+        self.node_state: str
 
         if self.name is None:
             raise ValueError("Node name is required")
@@ -61,14 +63,15 @@ class BaseNode(ABC):
         else:
             self.node_type = NodeType.UNKNOWN.value
             self.node_state = NodeState.IDLE.value
-            self.node_config = None
+            # Ensure node_config is always a dict to simplify downstream typing
+            self.node_config = {}
         # stores node specific state variables, this should be passed to langgraph
-        self.state_variables = []
+        self.state_variables: List[str] = []
 
         # throws ValueError
         self.validate_node()
 
-    def get_node_state(self) -> NodeState:
+    def get_node_state(self) -> str:
         """
         Get the node_state.
 
@@ -80,7 +83,7 @@ class BaseNode(ABC):
         """
         return self.node_state
 
-    def get_node_type(self) -> NodeType:
+    def get_node_type(self) -> str:
         """
         Get the node_type.
 
@@ -102,7 +105,7 @@ class BaseNode(ABC):
         Returns:
             bool: True if the node is special type.
         """
-        return self.node_type == NodeType.SPECIAL.value
+        return bool(self.node_type == NodeType.SPECIAL.value)
 
     def get_node_config(self) -> dict[str, Any]:
         """

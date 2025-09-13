@@ -9,16 +9,14 @@ from pathlib import Path
 from typing import Any, Optional, Union
 
 try:
-    from core.dataset.dataset_config import (
-        DataSourceConfig,
-        DataSourceType,
-        OutputConfig,
-        OutputType,
-        ShardConfig,
-        TransformConfig,
-    )
-    from core.dataset.file_handler import FileHandler
-    from core.dataset.huggingface_handler import HuggingFaceHandler
+    from grasp.core.dataset.dataset_config import DataSourceConfig  # noqa: F401
+    from grasp.core.dataset.dataset_config import DataSourceType  # noqa: F401
+    from grasp.core.dataset.dataset_config import OutputConfig  # noqa: F401
+    from grasp.core.dataset.dataset_config import OutputType  # noqa: F401
+    from grasp.core.dataset.dataset_config import ShardConfig  # noqa: F401
+    from grasp.core.dataset.dataset_config import TransformConfig  # noqa: F401
+    from grasp.core.dataset.file_handler import FileHandler  # noqa: F401
+    from grasp.core.dataset.huggingface_handler import HuggingFaceHandler  # noqa: F401
 
     CORE_DATA_AVAILABLE = True
 except ImportError:
@@ -103,7 +101,7 @@ class DataSource:
         if "transformations" not in self._config:
             self._config["transformations"] = []
 
-        transform_config = {"transform": transform}
+        transform_config: dict[str, Any] = {"transform": transform}
         if params:
             transform_config["params"] = params
 
@@ -112,7 +110,7 @@ class DataSource:
 
     def add_shard(self, regex: str = "*", index: Optional[list[int]] = None) -> "DataSource":
         """Add shard configuration."""
-        shard_config = {"regex": regex}
+        shard_config: dict[str, Any] = {"regex": regex}
         if index:
             shard_config["index"] = index
 

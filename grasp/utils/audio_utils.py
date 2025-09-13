@@ -2,13 +2,13 @@ import base64
 import io
 import os
 import re
-from typing import Any, Union
+from typing import Any, Union, cast
 
 import numpy as np
-import requests
+import requests  # type: ignore[import-untyped]
 
 try:
-    import soundfile as sf
+    import soundfile as sf  # type: ignore[import-untyped]
 except ModuleNotFoundError:
     raise ModuleNotFoundError(
         "GraSP Audio requires the optional 'audio' dependencies. "
@@ -139,7 +139,7 @@ def load_audio(data: Any, timeout: float = 5.0) -> Union[bytes, None]:
             try:
                 response = requests.get(data, timeout=timeout)
                 response.raise_for_status()
-                return response.content
+                return cast(bytes, response.content)
             except Exception:
                 return None
 
@@ -153,6 +153,9 @@ def load_audio(data: Any, timeout: float = 5.0) -> Union[bytes, None]:
     except Exception as e:
         logger.warning(f"Failed to load audio data: {e}")
         return None
+
+    # If none of the conditions matched and no exception occurred
+    return None
 
 
 def get_audio_url(audio_bytes: bytes, mime: str = "audio/wav") -> str:

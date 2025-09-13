@@ -3,52 +3,30 @@
 ########################################################################################################################
 
 # Define code paths for various operations
-CODE_PATHS = grasp tests tasks
+CODE_PATHS = grasp tests
+LINT_MYPY_PATHS = grasp
 
 # Define paths for JSON files
 JSON_PATHS = $(shell find grasp -name "*.json")
-
-# Minimum acceptable pylint score (0.0 - 10.0). CI will fail if below this.
-PYLINT_FAIL_UNDER ?= 8.0
 
 ########################################################################################################################
 # LINT
 ########################################################################################################################
 
-.PHONY: lint-local
-lint-local: lint-flake8-local lint-pylint-local lint-mypy-local ## Run all linters using poetry
+.PHONY: lint lint-ruff lint-mypy
 
-.PHONY: lint
-lint: ## Run all linters in a controlled environment
-	@echo "Running all linters"
-	poetry run make lint-local
+lint: ## Run all linters (Ruff + mypy)
+	@echo "🚀 Running all linters..."
+	poetry run make lint-ruff
+	poetry run make lint-mypy
 
-.PHONY: lint-flake8-local
-lint-flake8-local: ## Check code with flake8 using poetry
-	@echo "Checking code with flake8"
-	poetry run flake8 $(CODE_PATHS)
+lint-ruff: ## Fix code with Ruff (including unsafe fixes)
+	@echo "🛠️  Fixing with Ruff"
+	poetry run ruff check $(CODE_PATHS) --fix --unsafe-fixes --show-fixes
 
-.PHONY: lint-flake8
-lint-flake8: ## Run flake8 in a controlled environment
-	poetry run make lint-flake8-local
-
-.PHONY: lint-pylint-local
-lint-pylint-local: ## Analyze the code with pylint using poetry
-	@echo "Analyzing code with pylint"
-	poetry run pylint --jobs 0 --fail-under=$(PYLINT_FAIL_UNDER) $(CODE_PATHS)
-
-.PHONY: lint-pylint
-lint-pylint: ## Run pylint in a controlled environment
-	poetry run make lint-pylint-local
-
-.PHONY: lint-mypy-local
-lint-mypy-local: ## Type-check the code using mypy and poetry
-	@echo "Type-checking code with mypy"
-	poetry run mypy $(CODE_PATHS)
-
-.PHONY: lint-mypy
-lint-mypy: ## Run mypy in a controlled environment
-	poetry run make lint-mypy-local
+lint-mypy: ## Type-check the code with mypy
+	@echo "📐 Type-checking with mypy"
+	poetry run mypy $(LINT_MYPY_PATHS)
 
 ########################################################################################################################
 # FORMAT

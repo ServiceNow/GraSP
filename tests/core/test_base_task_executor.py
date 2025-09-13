@@ -476,7 +476,10 @@ def test_output_sink_error_handling(
     dummy_processor.is_valid_schema = True
 
     with (
-        patch("grasp.core.base_task_executor.DatasetProcessor", return_value=dummy_processor),
+        patch(
+            "grasp.core.base_task_executor.DatasetProcessor",
+            return_value=dummy_processor,
+        ),
         patch("grasp.core.base_task_executor.DataQuality", return_value=MagicMock()),
         patch(
             "grasp.core.base_task_executor.FileHandler.write",
@@ -521,7 +524,10 @@ def test_output_sink_success(
     dummy_processor.resume_manager = None
 
     with (
-        patch("grasp.core.base_task_executor.DatasetProcessor", return_value=dummy_processor),
+        patch(
+            "grasp.core.base_task_executor.DatasetProcessor",
+            return_value=dummy_processor,
+        ),
         patch("grasp.core.base_task_executor.DataQuality", return_value=MagicMock()),
         patch("grasp.core.base_task_executor.FileHandler.write") as mock_write,
         patch("json.loads", return_value={"id": 1}),
@@ -538,7 +544,7 @@ def test_output_sink_success(
 @patch("grasp.core.base_task_executor.logger.info")
 @patch("builtins.open", new_callable=mock_open, read_data='{"id": 1}\n')
 @patch("grasp.core.base_task_executor.os.path.exists", return_value=True)
-def test_output_sink_success(
+def test_output_sink_with_quality_success(
     mock_exists,
     mock_open_file,
     mock_logger_info,
@@ -562,7 +568,10 @@ def test_output_sink_success(
     dummy_processor.resume_manager = None
 
     with (
-        patch("grasp.core.base_task_executor.DatasetProcessor", return_value=dummy_processor),
+        patch(
+            "grasp.core.base_task_executor.DatasetProcessor",
+            return_value=dummy_processor,
+        ),
         patch(
             "grasp.core.base_task_executor.DataQuality", return_value=MagicMock()
         ) as mock_quality,
@@ -602,7 +611,10 @@ def test_output_sink_jsonl_reading(
     dummy_processor.resume_manager = None
 
     with (
-        patch("grasp.core.base_task_executor.DatasetProcessor", return_value=dummy_processor),
+        patch(
+            "grasp.core.base_task_executor.DatasetProcessor",
+            return_value=dummy_processor,
+        ),
         patch("grasp.core.base_task_executor.DataQuality", return_value=MagicMock()),
         patch("grasp.core.base_task_executor.FileHandler.write") as mock_write,
         patch("json.loads", side_effect=[{"id": 1}, {"id": 2}]),

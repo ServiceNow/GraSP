@@ -1,4 +1,3 @@
-import base64
 import io
 import os
 import sys
@@ -185,15 +184,6 @@ def test_image_transform_with_invalid_list_items(
 
 # --- Already Base64 in List ---
 
-import base64
-import os
-from io import BytesIO
-from unittest.mock import patch
-
-import matplotlib.pyplot as plt
-import numpy as np
-from PIL import Image
-
 
 @patch("grasp.utils.image_utils.get_image_fields", return_value=["img"])
 @patch("grasp.utils.image_utils.is_data_url", side_effect=[True, False])
@@ -222,7 +212,7 @@ def test_image_transform_preserves_base64_items(
 def test_image_transform_with_empty_string(mock_get_fields, image_transform):
     data = [{"img": ""}, {"img": None}]
     result = image_transform.transform(data, {})
-    assert result[0]["img"] is ""  # because it will not be detected as an image field
+    assert result[0]["img"] == ""  # because it will not be detected as an image field
     assert result[1]["img"] is None
 
 
@@ -235,7 +225,10 @@ def test_image_transform_with_empty_string(mock_get_fields, image_transform):
 
 @patch("grasp.utils.audio_utils.get_audio_fields", return_value=["audio"])
 @patch("grasp.utils.audio_utils.is_data_url", return_value=False)
-@patch("grasp.utils.audio_utils.get_audio_url", return_value="data:audio/wav;base64,dummybase64")
+@patch(
+    "grasp.utils.audio_utils.get_audio_url",
+    return_value="data:audio/wav;base64,dummybase64",
+)
 @patch("grasp.utils.audio_utils.load_audio")
 def test_audio_transform_with_temp_audio_file(
     mock_load_audio,
@@ -286,7 +279,10 @@ def test_audio_transform_with_hf_dict(mock_is_data_url, mock_get_fields, audio_t
 
 @patch("grasp.utils.audio_utils.get_audio_fields", return_value=["audio"])
 @patch("grasp.utils.audio_utils.is_data_url", return_value=False)
-@patch("grasp.utils.audio_utils.get_audio_url", return_value="data:audio/wav;base64,dummybase64")
+@patch(
+    "grasp.utils.audio_utils.get_audio_url",
+    return_value="data:audio/wav;base64,dummybase64",
+)
 @patch("grasp.utils.audio_utils.load_audio")
 def test_audio_transform_with_output_field_map(
     mock_load_audio,

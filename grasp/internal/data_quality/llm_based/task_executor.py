@@ -1,7 +1,7 @@
 import json
 from typing import Any
 
-import regex
+import regex  # type: ignore[import-untyped]
 import yaml
 
 from grasp.core.graph.functions.edge_condition import EdgeCondition
@@ -116,7 +116,7 @@ class DataQualityCategoryCondition(EdgeCondition):
     @staticmethod
     def apply(state: GraspState) -> str:
         # Retrieve the category from state and check against allowed categories
-        category = state.get("category", "").lower().replace(" ", "_")
+        category = str(state.get("category", "")).lower().replace(" ", "_")  # type: ignore[typeddict-unknown-key]
         prompt_config = load_prompt_config(
             utils.get_file_in_dir("internal.data_quality.llm_based", "prompt_config.yaml")
         )
@@ -146,12 +146,12 @@ class GenericPromptPostProcessor(NodePostProcessorWithState):
     def apply(self, response: GraspMessage, state: GraspState) -> GraspState:
         response_str = response.message.content.replace("\\", "\\\\")
         json_obj = parse_response_as_json(response_str) or {}
-        state["scores"].update({"response_quality": json_obj})
+        state["scores"].update({"response_quality": json_obj})  # type: ignore[typeddict-unknown-key]
         # Compute overall quality score if possible
         score_keys = [k for k in json_obj.keys() if "explanation" not in k]
         scores = [json_obj[k] for k in score_keys if json_obj[k] != -1]
         if scores:
-            state["scores"]["response_quality"]["overall_score"] = round(
+            state["scores"]["response_quality"]["overall_score"] = round(  # type: ignore[typeddict-unknown-key]
                 sum(scores) / len(scores), 2
             )
         return state
@@ -173,6 +173,6 @@ class DataQualityOutputGenerator(BaseOutputGenerator):
             dict[str, Any]: The updated metadata.
         """
         if "scores" in state:
-            metadata_llm_based = {"quality_characteristics": {"LLM_based": state["scores"]}}
+            metadata_llm_based = {"quality_characteristics": {"LLM_based": state["scores"]}}  # type: ignore[typeddict-unknown-key]
             utils.deep_update(metadata, metadata_llm_based)
         return metadata

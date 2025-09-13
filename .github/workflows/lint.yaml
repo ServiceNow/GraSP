@@ -1,4 +1,4 @@
-name: MkDocs Check
+name: Lint
 
 on:
   push:
@@ -8,7 +8,8 @@ on:
     types: [ opened, synchronize, reopened, ready_for_review ]
 
 jobs:
-  build:
+  lint:
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
     runs-on: ubuntu-latest
 
     steps:
@@ -40,6 +41,5 @@ jobs:
         if: steps.cached-poetry-deps.outputs.cache-hit != 'true'
         run: make setup-dev
 
-      # Build MkDocs site
-      - name: Build MkDocs site
-        run: make docs
+      - name: Run linters
+        run: make lint

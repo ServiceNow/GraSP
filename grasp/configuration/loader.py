@@ -1,12 +1,12 @@
 import os
 from pathlib import Path
-from typing import Any, Union
+from typing import Any, Union, cast
 
 import yaml
 
 try:
-    from grasp.core.dataset.dataset_config import DataSourceConfig, OutputConfig
-    from grasp.core.graph.graph_config import GraphConfig
+    from grasp.core.dataset.dataset_config import DataSourceConfig, OutputConfig  # noqa: F401
+    from grasp.core.graph.graph_config import GraphConfig  # noqa: F401
     from grasp.utils import utils
 
     UTILS_AVAILABLE = True
@@ -34,7 +34,7 @@ class ConfigLoader:
                 raise FileNotFoundError(f"Configuration file not found: {config_path}")
 
         with open(config_path, "r") as f:
-            config = yaml.safe_load(f)
+            config = cast(dict[str, Any], yaml.safe_load(f))
 
         return config
 

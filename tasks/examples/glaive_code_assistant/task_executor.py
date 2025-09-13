@@ -2,9 +2,11 @@ from typing import Any
 
 from langchain_core.messages import AIMessage, HumanMessage
 
-from grasp.core.base_task_executor import BaseTaskExecutor
 from grasp.core.graph.functions.edge_condition import EdgeCondition
-from grasp.core.graph.functions.node_processor import NodePostProcessor, NodePreProcessor
+from grasp.core.graph.functions.node_processor import (
+    NodePostProcessor,
+    NodePreProcessor,
+)
 from grasp.core.graph.grasp_state import GraspState
 from grasp.processors.output_record_generator import BaseOutputGenerator
 from grasp.utils import constants, utils
@@ -21,7 +23,9 @@ class CritiqueAnsNodePreProcessor(NodePreProcessor):
 
         # We need to convert user turns to assistant and vice versa
         cls_map = {"ai": HumanMessage, "human": AIMessage}
-        translated = [cls_map[msg.type](content=msg.content) for msg in state["messages"]]
+        translated = [
+            cls_map[msg.type](content=msg.content) for msg in state["messages"]
+        ]
         state.update({"messages": translated})
         return state
 
@@ -47,7 +51,9 @@ class ShouldContinueCondition(EdgeCondition):
 class CodeGenOutputGenerator(BaseOutputGenerator):
     @staticmethod
     def build_conversation(data: Any, state: GraspState) -> list[dict]:
-        chat_format_messages = utils.convert_messages_from_langchain_to_chat_format(data)
+        chat_format_messages = utils.convert_messages_from_langchain_to_chat_format(
+            data
+        )
         chat_format_messages.insert(0, {"role": "user", "content": state["question"]})
 
         return chat_format_messages

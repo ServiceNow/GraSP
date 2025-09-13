@@ -13,31 +13,27 @@ from grasp.processors.output_record_generator import BaseOutputGenerator
 try:
     from argparse import Namespace
 
-    from grasp.core.base_task_executor import DefaultTaskExecutor
-    from grasp.core.dataset.dataset_config import (
-        DataSourceConfig,
-        DataSourceType,
-        OutputConfig,
-        OutputType,
-    )
+    from grasp.core.base_task_executor import BaseTaskExecutor, DefaultTaskExecutor
+    from grasp.core.dataset.dataset_config import DataSourceConfig  # noqa: F401
+    from grasp.core.dataset.dataset_config import DataSourceType  # noqa: F401
+    from grasp.core.dataset.dataset_config import OutputConfig  # noqa: F401
+    from grasp.core.dataset.dataset_config import OutputType  # noqa: F401
     from grasp.core.graph.functions.node_processor import (
         NodePostProcessor,
         NodePostProcessorWithState,
         NodePreProcessor,
     )
-    from grasp.core.graph.grasp_message import GraspMessage
-    from grasp.core.graph.grasp_state import GraspState
+    from grasp.core.graph.grasp_message import GraspMessage  # noqa: F401
+    from grasp.core.graph.grasp_state import GraspState  # noqa: F401
     from grasp.core.judge_task_executor import JudgeQualityTaskExecutor
     from grasp.logger.logger_config import logger
-    from grasp.utils import constants
+    from grasp.utils import constants  # noqa: F401
     from grasp.utils import utils as utils
 
     CORE_AVAILABLE = True
 except ImportError:
     CORE_AVAILABLE = False
-    import logging
-
-    logger = logging.getLogger(__name__)
+    from grasp.logger.logger_config import logger
 
 from grasp.exceptions import ConfigurationError, ExecutionError, GraSPError
 from grasp.models import ModelConfigBuilder
@@ -107,18 +103,18 @@ class Workflow:
     """
 
     def __init__(self, name: Optional[str] = None):
-        self.name = name or f"workflow_{uuid.uuid4().hex[:8]}"
-        self._config = {
+        self.name: str = name or f"workflow_{uuid.uuid4().hex[:8]}"
+        self._config: dict[str, Any] = {
             "graph_config": {"nodes": {}, "edges": [], "graph_properties": {}},
             "data_config": {},
             "output_config": {},
         }
-        self._node_counter = 0
-        self._last_node = None
-        self._temp_files = []
-        self._overrides = {}
-        self._node_builders = {}
-        self._messages = []
+        self._node_counter: int = 0
+        self._last_node: Optional[str] = None
+        self._temp_files: list[str] = []
+        self._overrides: dict[str, Any] = {}
+        self._node_builders: dict[str, Any] = {}
+        self._messages: list[str] = []
 
         # Feature support flags
         self._supports_subgraphs = True
@@ -189,12 +185,14 @@ class Workflow:
         model: Union[str, dict[str, Any]],
         prompt: Union[str, list[dict[str, str]]],
         output: str = "messages",
-        pre_process: Union[str, Callable, NodePreProcessor] = None,
-        post_process: Union[str, Callable, NodePostProcessor, NodePostProcessorWithState] = None,
+        pre_process: Optional[Union[str, Callable, NodePreProcessor]] = None,
+        post_process: Optional[
+            Union[str, Callable, NodePostProcessor, NodePostProcessorWithState]
+        ] = None,
         **kwargs,
     ) -> "Workflow":
         """Add LLM node with full feature support including custom processors."""
-        node_name = self._generate_node_name("llm")
+        node_name: str = self._generate_node_name("llm")
 
         if isinstance(model, str):
             model_config = ModelConfigBuilder.from_name(model, **kwargs)
@@ -206,7 +204,7 @@ class Workflow:
         else:
             prompt_config = prompt
 
-        node_config = {
+        node_config: dict[str, Any] = {
             "node_type": "llm",
             "model": model_config,
             "prompt": prompt_config,
@@ -249,7 +247,7 @@ class Workflow:
 
     def multi_llm(
         self,
-        models: dict[str, Union[str, dict[str, Any]]],
+        models: dict[str, Any],
         prompt: Union[str, list[dict[str, str]]],
         **kwargs,
     ) -> "Workflow":
@@ -309,7 +307,7 @@ class Workflow:
             node_config["inject_system_messages"] = kwargs["inject_system_messages"]
 
         if kwargs.get("chat_history"):
-            node_config["chat_history"] = True
+            node_config["chat_history"] = True  # type: ignore[assignment]
 
         self._add_node_with_edge(node_name, node_config)
         return self
@@ -353,7 +351,7 @@ class Workflow:
         """Add subgraph node."""
         node_name = self._generate_node_name("subgraph")
 
-        node_config = {"node_type": "subgraph", "subgraph": subgraph_name}
+        node_config: dict[str, Any] = {"node_type": "subgraph", "subgraph": subgraph_name}
 
         if node_config_map:
             node_config["node_config_map"] = node_config_map
@@ -400,7 +398,7 @@ class Workflow:
 
         builder = LambdaNodeBuilder(name, func)
         self._node_builders[name] = builder
-        return self
+        return builder
 
     def add_weighted_sampler_node(self, name: str) -> "WeightedSamplerNodeBuilder":
         """Add weighted sampler node and return builder for chaining."""
@@ -532,7 +530,7 @@ class Workflow:
         if "source" not in self._config["data_config"]:
             self._config["data_config"]["source"] = {}
 
-        transformations = []
+        transformations: list = []
 
         for transform in transforms:
             if callable(transform):
@@ -585,7 +583,7 @@ class Workflow:
         """Enable OASST mapping (backward compatibility)."""
         return self.oasst_mapping(enabled, config)
 
-    def set_output_generator(self, generator: Union[str, dict[str, Any]]) -> "Workflow":
+    def set_output_generator(self, generator: Union[str, type, BaseOutputGenerator]) -> "Workflow":
         """Set output generator (backward compatibility)."""
         return self.output_generator(generator)
 
@@ -611,7 +609,9 @@ class Workflow:
         self._overrides[path] = value
         return self
 
-    def override_model(self, node_name: str, model_name: str = None, **params) -> "Workflow":
+    def override_model(
+        self, node_name: str, model_name: Optional[str] = None, **params
+    ) -> "Workflow":
         """Convenient method for model overrides."""
         if model_name:
             self.override(f"graph_config.nodes.{node_name}.model.name", model_name)
@@ -648,7 +648,11 @@ class Workflow:
         return self
 
     def output_field(
-        self, name: str, from_key: str = None, value: Any = None, transform: str = None
+        self,
+        name: str,
+        from_key: Optional[str] = None,
+        value: Optional[Any] = None,
+        transform: Optional[str] = None,
     ) -> "Workflow":
         """Add custom output field."""
         if "output_config" not in self._config:
@@ -738,8 +742,8 @@ class Workflow:
         **kwargs,
     ) -> Any:
         """Execute existing YAML-based task with full feature support."""
-        task_name = self.name
-        current_task = task_name
+        task_name: str = self.name
+        current_task: str = task_name
         utils.current_task = task_name
 
         config_file = f"{task_name}/graph_config.yaml"
@@ -779,6 +783,7 @@ class Workflow:
         )
 
         try:
+            executor: BaseTaskExecutor
             if kwargs.get("quality_only", False):
                 executor = JudgeQualityTaskExecutor(args, kwargs.get("quality_config"))
             else:
@@ -843,6 +848,7 @@ class Workflow:
                 ),
             )
 
+            executor: BaseTaskExecutor
             if kwargs.get("quality_only", False):
                 executor = JudgeQualityTaskExecutor(args, kwargs.get("quality_config"))
             else:
@@ -901,15 +907,15 @@ class Workflow:
         # Navigate through all keys except the last one
         for i, key in enumerate(keys[:-1]):
             if key.isdigit():
-                key = int(key)
+                key_index = int(key)
                 if not isinstance(current, list):
                     # Build the current path for better error reporting
                     current_path = ".".join(keys[: i + 1])
                     raise ValueError(f"Expected list at path {current_path}, got {type(current)}")
                 # Extend list if needed
-                while key >= len(current):
+                while key_index >= len(current):
                     current.append({})
-                current = current[key]
+                current = current[key_index]
             else:
                 if key not in current:
                     current[key] = {}
@@ -921,13 +927,13 @@ class Workflow:
         # Set the final value
         final_key = keys[-1]
         if final_key.isdigit():
-            final_key = int(final_key)
+            final_key_index = int(final_key)
             if not isinstance(current, list):
                 raise ValueError(f"Expected list for index {final_key} at path {path}")
             # Extend list if needed
-            while final_key >= len(current):
+            while final_key_index >= len(current):
                 current.append(None)
-            current[final_key] = value
+            current[final_key_index] = value
         else:
             current[final_key] = value
 

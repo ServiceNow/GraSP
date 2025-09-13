@@ -9,11 +9,10 @@ Key test scenarios:
 """
 
 import json
-import os
 import sys
 import unittest
 from pathlib import Path
-from typing import Any
+from typing import Any, Dict
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
@@ -66,6 +65,9 @@ class MockClient:
     def build_request(self, **kwargs):
         return kwargs
 
+    def build_request_with_payload(self, payload: Dict[str, Any], **kwargs):
+        return payload
+
     async def async_send_request(self, payload, **kwargs):
         response = Mock()
         response.text = self.response_text
@@ -101,7 +103,8 @@ class TestSchemaConfigParser(unittest.TestCase):
 
             self.assertEqual(parser.schema_type, "class")
             self.assertEqual(
-                parser.class_path, "tests.core.models.test_structured_output_support.UserSchema"
+                parser.class_path,
+                "tests.core.models.test_structured_output_support.UserSchema",
             )
             self.assertIsNone(parser.schema_data)
 
@@ -499,12 +502,9 @@ class TestStructuredOutputMethods(unittest.IsolatedAsyncioTestCase):
         model._structured_output_lock.__aenter__ = AsyncMock(return_value=None)
         model._structured_output_lock.__aexit__ = AsyncMock(return_value=None)
 
-        resp_text, resp_status = await model._handle_structured_output(
-            self.test_input, self.test_params
-        )
+        resp = await model._handle_structured_output(self.test_input, self.test_params)
 
-        self.assertIsNone(resp_text)
-        self.assertIsNone(resp_status)
+        self.assertIsNone(resp)
 
     @patch("grasp.utils.utils.validate_required_keys")
     @patch(

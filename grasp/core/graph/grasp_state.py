@@ -1,7 +1,7 @@
 from typing import TypedDict
 
 
-class GraspState(TypedDict):
+class GraspState(TypedDict, total=False):
     """
     This class defines predefined state variables/schema.
 
@@ -9,6 +9,4 @@ class GraspState(TypedDict):
     Base class is only added for readability and keeping langgraph decoupled from platform
     """
 
-    def __init__(self):
-        # this is added to complete the class
-        return
+    pass

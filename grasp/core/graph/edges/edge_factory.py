@@ -1,5 +1,5 @@
 from abc import ABC
-from typing import Any
+from typing import Any, Optional
 
 from grasp.core.graph.nodes.base_node import BaseNode, NodeType
 from grasp.core.graph.nodes.node_utils import get_node
@@ -17,7 +17,7 @@ class BaseEdge(ABC):
     May need to support multiple target node (one to many) in future.
     """
 
-    def __init__(self, source: BaseNode, target: BaseNode):
+    def __init__(self, source: Optional[BaseNode], target: Optional[BaseNode]):
         """
         Create a BaseEdge object using source and sink node.
 
@@ -28,13 +28,13 @@ class BaseEdge(ABC):
         self.source = source
         self.target = target
         # Condition string or method for conditional edges
-        self.condition = None
+        self.condition: Optional[str] = None
         # Mapping from condition outcome to node name
-        self.path_map = {}
+        self.path_map: dict = {}
         # Original edge configuration dictionary
-        self.edge_config = {}
+        self.edge_config: dict = {}
 
-    def get_source(self) -> BaseNode:
+    def get_source(self) -> Optional[BaseNode]:
         """
         Get source node object.
 
@@ -43,7 +43,7 @@ class BaseEdge(ABC):
         """
         return self.source
 
-    def get_target(self) -> BaseNode:
+    def get_target(self) -> Optional[BaseNode]:
         """
         Get target or sink node object.
 
@@ -52,7 +52,7 @@ class BaseEdge(ABC):
         """
         return self.target
 
-    def set_condition(self, condition):
+    def set_condition(self, condition: Optional[str]):
         """
         Set condition string which represent a class(new) or a method(old).
 
@@ -66,7 +66,7 @@ class BaseEdge(ABC):
         """
         self.condition = condition
 
-    def get_condition(self) -> str:
+    def get_condition(self) -> Optional[str]:
         """
         Get condition string which represents full class path(new) or a method(old).
 
@@ -150,10 +150,10 @@ class EdgeFactory:
 
         # Process top-level (parent) edges
         for edge_cfg in edges_config:
-            src_node_name = edge_cfg.get("from")
-            tgt_node_name = edge_cfg.get("to")
-            condition = edge_cfg.get("condition")
-            path_map = edge_cfg.get("path_map")
+            src_node_name: Optional[str] = edge_cfg.get("from")
+            tgt_node_name: Optional[str] = edge_cfg.get("to")
+            condition: Optional[str] = edge_cfg.get("condition")
+            path_map: Optional[dict[Any, Any]] = edge_cfg.get("path_map")
 
             # Resolve source and target nodes.
             # For subgraph references, use the subgraph's exit for source and entry for target.
@@ -194,7 +194,12 @@ class EdgeFactory:
             logger.info(f"Subgraph {sg_name} edges inlined.")
 
     def update_edge_config(
-        self, edge_cfg: dict, src_node: BaseNode, tgt_node: BaseNode, condition: str, path_map: dict
+        self,
+        edge_cfg: dict,
+        src_node: Optional[BaseNode],
+        tgt_node: Optional[BaseNode],
+        condition: Optional[str],
+        path_map: Optional[dict],
     ):
         """
         Updates the edge configuration dictionary with resolved source and target nodes.
@@ -224,7 +229,7 @@ class EdgeFactory:
         """
         return self.edges
 
-    def _resolve_source(self, node_name: str) -> BaseNode:
+    def _resolve_source(self, node_name: Optional[str]) -> Optional[BaseNode]:
         """
         Resolves the source node for an edge.
         If the node is a subgraph placeholder, returns its exit node.
@@ -241,7 +246,7 @@ class EdgeFactory:
             return self._get_node(node_name, exit_node_name)
         return self._get_node(node_name)
 
-    def _resolve_target(self, node_name: str) -> BaseNode:
+    def _resolve_target(self, node_name: Optional[str]) -> Optional[BaseNode]:
         """
         Resolves the target node for an edge.
         If the node is a subgraph placeholder, returns its entry node.
@@ -258,7 +263,7 @@ class EdgeFactory:
             return self._get_node(node_name, entry_node_name)
         return self._get_node(node_name)
 
-    def _find_subgraph_entry(self, subgraph) -> str:
+    def _find_subgraph_entry(self, subgraph) -> Any:
         """
         Finds the entry node of a subgraph by scanning for the edge with 'from' == "START".
 
@@ -273,7 +278,7 @@ class EdgeFactory:
                 return edge["to"]
         raise RuntimeError(f"Subgraph {subgraph.parent_node} has no valid entry node.")
 
-    def _find_subgraph_exit(self, subgraph) -> str:
+    def _find_subgraph_exit(self, subgraph) -> Any:
         """
         Finds the exit node of a subgraph by scanning for the edge with 'to' == "END".
 
@@ -305,7 +310,9 @@ class EdgeFactory:
             return f"{entry_node}"
         return value
 
-    def _get_node(self, node_name: str, sub_node: str = None) -> BaseNode:
+    def _get_node(
+        self, node_name: Optional[str], sub_node: Optional[str] = None
+    ) -> Optional[BaseNode]:
         """
         Retrieves the BaseNode instance for a given node name.
         If the node is a subgraph placeholder (stored as a dictionary),
@@ -321,11 +328,10 @@ class EdgeFactory:
         if node_name is None:
             return None
         # First, try to retrieve the node by its name.
-        if self.nodes.get(node_name):
-            node = self.nodes.get(node_name)
-        elif self.nodes.get(sub_node):
+        node = self.nodes.get(node_name)
+        if node is None and sub_node is not None:
             node = self.nodes.get(sub_node)
-        else:
+        if node is None:
             if node_name in SpecialNode.SPECIAL_NODES:
                 node = get_node(node_name, {"node_type": NodeType.SPECIAL.value})
             else:

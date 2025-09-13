@@ -7,7 +7,12 @@ from unittest.mock import patch
 sys.path.append(str(Path(__file__).parent.parent.parent.parent))
 
 import grasp.utils.constants as constants
-from grasp.core.models.custom_models import BaseCustomModel, CustomOllama, CustomOpenAI, CustomVLLM
+from grasp.core.models.custom_models import (
+    BaseCustomModel,
+    CustomOllama,
+    CustomOpenAI,
+    CustomVLLM,
+)
 
 
 class TestValidateCompletionApiSupport(unittest.TestCase):
@@ -49,7 +54,11 @@ class TestValidateCompletionApiSupport(unittest.TestCase):
         }
 
         # Config for CustomOllama
-        self.ollama_config = {**self.base_config, "name": "test_ollama", "model_type": "ollama"}
+        self.ollama_config = {
+            **self.base_config,
+            "name": "test_ollama",
+            "model_type": "ollama",
+        }
 
     def tearDown(self):
         """Clean up after each test method"""
@@ -109,7 +118,7 @@ class TestValidateCompletionApiSupport(unittest.TestCase):
 
         # Create the model - should not raise an error
         try:
-            model = CustomVLLM(config)
+            CustomVLLM(config)
         except ValueError:
             self.fail("CustomVLLM raised ValueError unexpectedly")
 
@@ -121,7 +130,7 @@ class TestValidateCompletionApiSupport(unittest.TestCase):
     def test_vllm_model_completions_api_not_set(self, mock_logger, mock_client_factory):
         """Test that CustomVLLM doesn't log anything when completions_api is not set"""
         # Create the model with completions_api not set
-        model = CustomVLLM(self.vllm_config)
+        CustomVLLM(self.vllm_config)
 
         # Verify that logger.info was not called
         mock_logger.info.assert_not_called()
@@ -135,7 +144,7 @@ class TestValidateCompletionApiSupport(unittest.TestCase):
 
         # Create the model - should not raise an error
         try:
-            model = CustomOpenAI(config)
+            CustomOpenAI(config)
         except ValueError:
             self.fail("CustomOpenAI raised ValueError unexpectedly")
 
@@ -147,7 +156,7 @@ class TestValidateCompletionApiSupport(unittest.TestCase):
     def test_openai_model_completions_api_not_set(self, mock_logger, mock_client_factory):
         """Test that CustomOpenAI doesn't log anything when completions_api is not set"""
         # Create the model with completions_api not set
-        model = CustomOpenAI(self.openai_config)
+        CustomOpenAI(self.openai_config)
 
         # Verify that logger.info was not called
         mock_logger.info.assert_not_called()
@@ -160,7 +169,7 @@ class TestValidateCompletionApiSupport(unittest.TestCase):
 
         # Create the model - should not raise an error
         try:
-            model = CustomOllama(config)
+            CustomOllama(config)
         except ValueError:
             self.fail("CustomOllama raised ValueError unexpectedly")
 
@@ -171,7 +180,7 @@ class TestValidateCompletionApiSupport(unittest.TestCase):
     def test_ollama_model_completions_api_not_set(self, mock_logger):
         """Test that CustomOllama doesn't log anything when completions_api is not set"""
         # Create the model with completions_api not set
-        model = CustomOllama(self.ollama_config)
+        CustomOllama(self.ollama_config)
 
         # Verify that logger.info was not called
         mock_logger.info.assert_not_called()

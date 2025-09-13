@@ -40,7 +40,10 @@ class TestCustomTriton(unittest.TestCase):
         # Mock payloads
         self.mock_payload_config = {
             "payload_json": {
-                "inputs": [{"name": "request", "data": []}, {"name": "options", "data": []}]
+                "inputs": [
+                    {"name": "request", "data": []},
+                    {"name": "options", "data": []},
+                ]
             },
             "response_key": "response",
         }
@@ -129,7 +132,8 @@ class TestCustomTriton(unittest.TestCase):
         self.assertEqual(result["inputs"][0]["data"], [json.dumps(messages, ensure_ascii=False)])
         self.assertEqual(result["inputs"][1]["name"], "options")
         self.assertEqual(
-            result["inputs"][1]["data"], [json.dumps(generation_params, ensure_ascii=False)]
+            result["inputs"][1]["data"],
+            [json.dumps(generation_params, ensure_ascii=False)],
         )
 
     def test_get_response_text_success(self):
@@ -217,7 +221,7 @@ class TestCustomTriton(unittest.TestCase):
 
         self.assertEqual(result, "")
         mock_logger.error.assert_any_call(
-            f"Failed to get response text: Expecting value: line 1 column 1 (char 0)"
+            "Failed to get response text: Expecting value: line 1 column 1 (char 0)"
         )
 
     @patch("grasp.core.models.custom_models.utils")

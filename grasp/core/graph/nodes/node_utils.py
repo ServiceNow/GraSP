@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Type, cast
 
 from grasp.core.graph.nodes.agent_node import AgentNode
 from grasp.core.graph.nodes.base_node import BaseNode, NodeType
@@ -13,16 +13,6 @@ from grasp.core.graph.nodes.weighted_sampler_node import WeightedSamplerNode
 def get_node(node_name: str, node_config: dict[str, Any]) -> BaseNode:
     """
     Converts the node configuration into a Node object.
-
-    Args:
-        node_name: Name of the node.
-        node_config: Node configuration dictionary.
-
-    Returns:
-        BaseNode object.
-
-    Raises:
-        NotImplementedError: If the node type is not recognized.
     """
     assert (
         "node_type" in node_config
@@ -30,7 +20,8 @@ def get_node(node_name: str, node_config: dict[str, Any]) -> BaseNode:
 
     node_type = node_config["node_type"]
 
-    node_mapping = {
+    # Dict of string → subclass of BaseNode
+    node_mapping: dict[str, Type[BaseNode]] = {
         NodeType.LLM.value: LLMNode,
         NodeType.AGENT.value: AgentNode,
         NodeType.MULTI_LLM.value: MultiLLMNode,
@@ -40,13 +31,13 @@ def get_node(node_name: str, node_config: dict[str, Any]) -> BaseNode:
         NodeType.CONNECTOR.value: ConnectorNode,
     }
 
-    if node_type == NodeType.SPECIAL.value or node_type == NodeType.CONNECTOR.value:
-        return node_mapping[node_type](node_name)
-
     if node_type not in node_mapping:
         raise NotImplementedError(f"Node type '{node_type}' is not implemented.")
 
-    return node_mapping[node_type](node_name, node_config)
+    if node_type in (NodeType.SPECIAL.value, NodeType.CONNECTOR.value):
+        return node_mapping[node_type](node_name)  # type: ignore[call-arg]
+
+    return node_mapping[node_type](node_name, node_config)  # type: ignore[call-arg]
 
 
 def get_node_config(node_name: str, graph_config: dict[str, Any]) -> dict[str, Any]:
@@ -59,6 +50,6 @@ def get_node_config(node_name: str, graph_config: dict[str, Any]) -> dict[str, A
     Returns:
         Node configuration dictionary.
     """
-    nodes = graph_config.get("nodes", {})
+    nodes = cast(dict[str, Any], graph_config.get("nodes", {}))
     assert node_name in nodes, f"Node {node_name} not found in graph configuration"
-    return nodes[node_name]
+    return cast(dict[str, Any], nodes[node_name])

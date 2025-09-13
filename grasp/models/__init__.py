@@ -1,14 +1,12 @@
-from typing import Any, Optional
+from typing import Any, Optional, cast
 
 try:
-    from grasp.core.models.custom_models import (
-        CustomAzure,
-        CustomMistralAPI,
-        CustomOpenAI,
-        CustomTGI,
-        CustomVLLM,
-    )
-    from grasp.core.models.model_factory import ModelFactory
+    from grasp.core.models.custom_models import CustomAzure  # noqa: F401
+    from grasp.core.models.custom_models import CustomMistralAPI  # noqa: F401
+    from grasp.core.models.custom_models import CustomOpenAI  # noqa: F401
+    from grasp.core.models.custom_models import CustomTGI  # noqa: F401
+    from grasp.core.models.custom_models import CustomVLLM  # noqa: F401
+    from grasp.core.models.model_factory import ModelFactory  # noqa: F401
     from grasp.utils import utils
 
     MODELS_AVAILABLE = True
@@ -25,26 +23,29 @@ class ModelConfigBuilder:
 
         try:
             # Try to load from framework's model configs first
-            model_configs = utils.load_model_config()
+            model_configs = cast(dict[str, dict[str, Any]], utils.load_model_config())
             if model_name in model_configs:
-                base_config = model_configs[model_name].copy()
+                base_config: dict[str, Any] = model_configs[model_name].copy()
 
                 # Ensure required name field
                 base_config["name"] = model_name
 
                 # Override with any provided kwargs
-                if "parameters" not in base_config:
+                if "parameters" not in base_config or not isinstance(
+                    base_config.get("parameters"), dict
+                ):
                     base_config["parameters"] = {}
 
-                base_config["parameters"].update(
+                params: dict[str, Any] = cast(dict[str, Any], base_config["parameters"])
+                params.update(
                     {
                         "temperature": kwargs.get(
                             "temperature",
-                            base_config["parameters"].get("temperature", 0.7),
+                            params.get("temperature", 0.7),
                         ),
                         "max_tokens": kwargs.get(
                             "max_tokens",
-                            base_config["parameters"].get("max_tokens", 1000),
+                            params.get("max_tokens", 1000),
                         ),
                     }
                 )

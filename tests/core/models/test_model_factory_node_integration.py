@@ -46,7 +46,7 @@ class TestModelFactoryNodeIntegration(unittest.TestCase):
             # Initialize an LLM node
             node_config = {"model": {"name": "test_model"}, "prompt": "test prompt"}
 
-            node = LLMNode("test_llm_node", node_config)
+            LLMNode("test_llm_node", node_config)
 
             # Verify get_model was called
             mock_get_model.assert_called_once_with({"name": "test_model"})
@@ -79,7 +79,7 @@ class TestModelFactoryNodeIntegration(unittest.TestCase):
                 # Initialize an Agent node
                 node_config = {"model": {"name": "test_model"}, "prompt": "test prompt"}
 
-                node = AgentNode("test_agent_node", node_config)
+                AgentNode("test_agent_node", node_config)
 
                 # Verify get_model was called with the langgraph backend
                 mock_get_model.assert_called_once_with({"name": "test_model"}, "langgraph")

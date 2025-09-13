@@ -1,7 +1,7 @@
 import importlib
 from abc import ABC, abstractmethod
 from inspect import getmembers, isclass
-from typing import Callable, List
+from typing import List
 
 from langchain_core.tools import BaseTool
 
@@ -20,7 +20,7 @@ class LangChainToolsWrapper(ABC):
         pass
 
 
-def load_tools(tool_paths: List[str]) -> List[Callable]:
+def load_tools(tool_paths: List[str]) -> List[BaseTool]:
     """
     Load tools from a variety of sources specified in tool_paths.
 
@@ -36,7 +36,7 @@ def load_tools(tool_paths: List[str]) -> List[Callable]:
     Returns:
         List of loaded tools from all sources
     """
-    tools = []
+    tools: List[BaseTool] = []
 
     for path in tool_paths:
         # First, check if it's an individual tool function using dot notation
@@ -72,7 +72,9 @@ def load_tools(tool_paths: List[str]) -> List[Callable]:
                             tools.extend(_extract_tools_from_class(obj))
                             valid = True
                             continue
-                        elif issubclass(tool_func, LangChainToolsWrapper):
+                        elif isinstance(tool_func, type) and issubclass(
+                            tool_func, LangChainToolsWrapper
+                        ):
                             tools.extend(tool_func().get_tools())
                             valid = True
                             continue
@@ -103,7 +105,7 @@ def load_tools(tool_paths: List[str]) -> List[Callable]:
     return tools
 
 
-def _extract_tools_from_module(module) -> List[Callable]:
+def _extract_tools_from_module(module) -> List[BaseTool]:
     """
     Extract all tool functions from a module.
 
@@ -113,7 +115,7 @@ def _extract_tools_from_module(module) -> List[Callable]:
     Returns:
         List of tool functions found in the module
     """
-    tools = []
+    tools: List[BaseTool] = []
 
     # Find all functions in the module that have been decorated with @tool
     for _, obj in getmembers(module):
@@ -123,7 +125,7 @@ def _extract_tools_from_module(module) -> List[Callable]:
     return tools
 
 
-def _extract_tools_from_class(cls) -> List[Callable]:
+def _extract_tools_from_class(cls) -> List[BaseTool]:
     """
     Extract all tool methods from a class.
 
@@ -133,7 +135,7 @@ def _extract_tools_from_class(cls) -> List[Callable]:
     Returns:
         List of tool methods found in the class
     """
-    tools = []
+    tools: List[BaseTool] = []
 
     # Find all methods in the class that have been decorated with @tool
     for _, obj in getmembers(cls):

@@ -6,7 +6,7 @@ using graph-based architectures with LLMs, agents, and custom processing nodes.
 """
 
 import logging
-from typing import Any, Dict, Union
+from typing import Any, Callable, Union
 
 from .configuration import ConfigLoader, load_config
 from .exceptions import (
@@ -23,13 +23,13 @@ from .models import ModelConfigBuilder
 from .workflow import Workflow, create_graph
 
 try:
-    from .core.base_task_executor import BaseTaskExecutor, DefaultTaskExecutor
-    from .core.dataset.dataset_processor import DatasetProcessor
-    from .core.graph.graph_config import GraphConfig
-    from .core.graph.grasp_message import GraspMessage
-    from .core.graph.grasp_state import GraspState
-    from .core.judge_task_executor import JudgeQualityTaskExecutor
-    from .core.resumable_execution import ResumableExecutionManager
+    from .core.base_task_executor import BaseTaskExecutor, DefaultTaskExecutor  # noqa: F401
+    from .core.dataset.dataset_processor import DatasetProcessor  # noqa: F401
+    from .core.graph.graph_config import GraphConfig  # noqa: F401
+    from .core.graph.grasp_message import GraspMessage  # noqa: F401
+    from .core.graph.grasp_state import GraspState  # noqa: F401
+    from .core.judge_task_executor import JudgeQualityTaskExecutor  # noqa: F401
+    from .core.resumable_execution import ResumableExecutionManager  # noqa: F401
 
     CORE_AVAILABLE = True
 except ImportError as e:
@@ -37,16 +37,14 @@ except ImportError as e:
     CORE_AVAILABLE = False
 
 try:
-    from .core.dataset.dataset_config import (
-        DataSourceConfig,
-        DataSourceType,
-        OutputConfig,
-        OutputType,
-        ShardConfig,
-        TransformConfig,
-    )
-    from .core.dataset.file_handler import FileHandler
-    from .core.dataset.huggingface_handler import HuggingFaceHandler
+    from .core.dataset.dataset_config import DataSourceConfig  # noqa: F401
+    from .core.dataset.dataset_config import DataSourceType  # noqa: F401
+    from .core.dataset.dataset_config import OutputConfig  # noqa: F401
+    from .core.dataset.dataset_config import OutputType  # noqa: F401
+    from .core.dataset.dataset_config import ShardConfig  # noqa: F401
+    from .core.dataset.dataset_config import TransformConfig  # noqa: F401
+    from .core.dataset.file_handler import FileHandler  # noqa: F401
+    from .core.dataset.huggingface_handler import HuggingFaceHandler  # noqa: F401
 
     DATA_HANDLERS_AVAILABLE = True
 except ImportError:
@@ -54,11 +52,11 @@ except ImportError:
 
 # Node modules
 try:
-    from .core.graph.nodes.agent_node import AgentNode as CoreAgentNode
-    from .core.graph.nodes.base_node import BaseNode, NodeState, NodeType
-    from .core.graph.nodes.llm_node import LLMNode as CoreLLMNode
-    from .core.graph.nodes.multi_llm_node import MultiLLMNode as CoreMultiLLMNode
-    from .core.graph.nodes.weighted_sampler_node import (
+    from .core.graph.nodes.agent_node import AgentNode as CoreAgentNode  # noqa: F401
+    from .core.graph.nodes.base_node import BaseNode, NodeState, NodeType  # noqa: F401
+    from .core.graph.nodes.llm_node import LLMNode as CoreLLMNode  # noqa: F401
+    from .core.graph.nodes.multi_llm_node import MultiLLMNode as CoreMultiLLMNode  # noqa: F401
+    from .core.graph.nodes.weighted_sampler_node import (  # noqa: F401
         WeightedSamplerNode as CoreWeightedSamplerNode,
     )
 
@@ -68,9 +66,9 @@ except ImportError:
 
 # Model factory modules
 try:
-    from .core.models.model_factory import ModelFactory
-    from .core.models.structured_output.schemas_factory import SimpleResponse
-    from .core.models.structured_output.structured_output_config import (
+    from .core.models.model_factory import ModelFactory  # noqa: F401
+    from .core.models.structured_output.schemas_factory import SimpleResponse  # noqa: F401
+    from .core.models.structured_output.structured_output_config import (  # noqa: F401
         StructuredOutputConfig,
     )
 
@@ -81,12 +79,10 @@ except ImportError:
 # Utility modules
 try:
     from . import utils
-    from .logger.logger_config import (
-        logger,
-        reset_to_internal_logger,
-        set_external_logger,
-    )
-    from .utils import constants
+    from .logger.logger_config import logger  # noqa: F401
+    from .logger.logger_config import reset_to_internal_logger  # noqa: F401
+    from .logger.logger_config import set_external_logger  # noqa: F401
+    from .utils import constants  # noqa: F401
 
     UTILS_AVAILABLE = True
 except ImportError:
@@ -94,14 +90,12 @@ except ImportError:
 
 # Import node builders
 try:
-    from .nodes import (
-        AgentNodeBuilder,
-        LambdaNodeBuilder,
-        LLMNodeBuilder,
-        MultiLLMNodeBuilder,
-        SubgraphNodeBuilder,
-        WeightedSamplerNodeBuilder,
-    )
+    from .nodes import AgentNodeBuilder  # noqa: F401
+    from .nodes import LambdaNodeBuilder  # noqa: F401
+    from .nodes import LLMNodeBuilder  # noqa: F401
+    from .nodes import MultiLLMNodeBuilder  # noqa: F401
+    from .nodes import SubgraphNodeBuilder  # noqa: F401
+    from .nodes import WeightedSamplerNodeBuilder  # noqa: F401
 
     NODE_BUILDERS_AVAILABLE = True
 except ImportError:
@@ -109,16 +103,14 @@ except ImportError:
 
 # Import data utilities
 try:
-    from .data import (
-        DataSink,
-        DataSinkFactory,
-        DataSource,
-        DataSourceFactory,
-        from_file,
-        from_huggingface,
-        to_file,
-        to_huggingface,
-    )
+    from .data import DataSink  # noqa: F401
+    from .data import DataSinkFactory  # noqa: F401
+    from .data import DataSource  # noqa: F401
+    from .data import DataSourceFactory  # noqa: F401
+    from .data import from_file  # noqa: F401
+    from .data import from_huggingface  # noqa: F401
+    from .data import to_file  # noqa: F401
+    from .data import to_huggingface  # noqa: F401
 
     DATA_UTILS_AVAILABLE = True
 except ImportError:
@@ -152,16 +144,21 @@ def quick_agent(
     return (
         Workflow(f"quick_agent_{model.replace('/', '_')}")
         .source(data_source)
-        .agent(model, prompt, tools)
+        .agent(model=model, tools=tools, prompt=prompt)
         .sink(output)
     )
 
 
 def quick_multi_llm(
-    models: Dict[str, str], prompt: str, data_source: str, output: str = "output.json"
+    models: dict[str, Any], prompt: str, data_source: str, output: str = "output.json"
 ):
     """Quick multi-LLM workflow creation."""
-    return Workflow("quick_multi_llm").source(data_source).multi_llm(models, prompt).sink(output)
+    return (
+        Workflow("quick_multi_llm")
+        .source(data_source)
+        .multi_llm(models=models, prompt=prompt)
+        .sink(output)
+    )
 
 
 def execute_task(task_name: str, **kwargs):
@@ -198,7 +195,7 @@ def create_chat_workflow(name: str, conversation_type: str = "multiturn") -> Wor
     return workflow
 
 
-def create_structured_schema(fields: Dict[str, str], name: str = "CustomSchema") -> Dict[str, Any]:
+def create_structured_schema(fields: dict[str, str], name: str = "CustomSchema") -> dict[str, Any]:
     """Create structured output schema configuration."""
     return {
         "enabled": True,
@@ -211,33 +208,33 @@ def create_structured_schema(fields: Dict[str, str], name: str = "CustomSchema")
     }
 
 
-def pydantic_schema(model_class: str) -> Dict[str, Any]:
+def pydantic_schema(model_class: str) -> dict[str, Any]:
     """Create structured output schema from Pydantic model class path."""
     return {"enabled": True, "schema": model_class}
 
 
-def create_processor_config(processor: Union[str, callable], **params) -> Dict[str, Any]:
+def create_processor_config(processor: Union[str, Callable], **params) -> dict[str, Any]:
     """Create processor configuration."""
     if callable(processor):
         processor_path = f"{processor.__module__}.{processor.__name__}"
     else:
         processor_path = processor
 
-    config = {"processor": processor_path}
+    config: dict[str, Any] = {"processor": processor_path}
     if params:
         config["params"] = params
 
     return config
 
 
-def create_transformation_config(transform: Union[str, callable], **params) -> Dict[str, Any]:
+def create_transformation_config(transform: Union[str, Callable], **params) -> dict[str, Any]:
     """Create data transformation configuration."""
     if callable(transform):
         transform_path = f"{transform.__module__}.{transform.__name__}"
     else:
         transform_path = transform
 
-    config = {"transform": transform_path}
+    config: dict[str, Any] = {"transform": transform_path}
     if params:
         config["params"] = params
 
@@ -254,7 +251,7 @@ def setup_logging(level: str = "INFO") -> None:
     logging.getLogger("grasp").setLevel(getattr(logging, level.upper()))
 
 
-def validate_environment() -> Dict[str, bool]:
+def validate_environment() -> dict[str, bool]:
     """Validate environment setup."""
     return {
         "core_available": CORE_AVAILABLE,
@@ -267,7 +264,7 @@ def validate_environment() -> Dict[str, bool]:
     }
 
 
-def get_info() -> Dict[str, Any]:
+def get_info() -> dict[str, Any]:
     """Get library information and feature availability."""
     return {
         "version": __version__,
@@ -283,19 +280,20 @@ def list_available_models() -> list[str]:
         return ["Framework not available - cannot list models"]
 
     try:
-        model_configs = utils.load_model_config()
+        model_configs = utils.utils.load_model_config()
         return list(model_configs.keys())
     except Exception as e:
         return [f"Error loading models: {e}"]
 
 
-def get_model_info(model_name: str) -> Dict[str, Any]:
+def get_model_info(model_name: str) -> dict[str, Any]:
     """Get information about a specific model."""
     if not UTILS_AVAILABLE:
         return {"error": "Framework not available"}
 
     try:
-        model_configs = utils.load_model_config()
+        # Ensure the mapping type is explicit so mypy can infer correct return type
+        model_configs: dict[str, dict[str, Any]] = utils.utils.load_model_config()
         return model_configs.get(model_name, {"error": f"Model {model_name} not found"})
     except Exception as e:
         return {"error": f"Error loading model info: {e}"}

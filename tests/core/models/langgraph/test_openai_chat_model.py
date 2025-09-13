@@ -368,7 +368,7 @@ class TestOpenAIChatModel(unittest.TestCase):
         mock_client.build_request.assert_called_once_with(messages=messages)
         mock_client.send_request.assert_called_once_with(
             {"messages": [{"role": "user", "content": "Hello"}]},
-            self.base_config.get("model"),
+            self.base_config.get("name"),
             self.base_config.get("parameters"),
         )
 

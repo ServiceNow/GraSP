@@ -566,7 +566,10 @@ def test_init_from_dict_config(mock_args, mock_grasp_config, mock_model_config):
             "grasp.core.base_task_executor.utils.get_file_in_task_dir",
             return_value="dummy_path.yaml",
         ),
-        patch("grasp.core.dataset.file_handler.FileHandler.read", return_value=[{"id": "abc"}]),
+        patch(
+            "grasp.core.dataset.file_handler.FileHandler.read",
+            return_value=[{"id": "abc"}],
+        ),
     ):
         executor = BaseTaskExecutor(mock_args, graph_config_dict=mock_grasp_config)
         assert "build_text_node" in executor.graph_config.get_nodes()
@@ -594,7 +597,10 @@ def test_missing_graph_config_key(mock_args, mock_model_config):
             "grasp.core.base_task_executor.utils.get_file_in_task_dir",
             return_value="dummy_path.yaml",
         ),
-        patch("grasp.core.dataset.file_handler.FileHandler.read", return_value=[{"id": "abc"}]),
+        patch(
+            "grasp.core.dataset.file_handler.FileHandler.read",
+            return_value=[{"id": "abc"}],
+        ),
     ):
         with pytest.raises(ValueError, match="graph_config key is required"):
             BaseTaskExecutor(mock_args, graph_config_dict=invalid_config)
@@ -622,7 +628,10 @@ def test_invalid_variable_type_in_output(mock_args, mock_grasp_config, mock_mode
             "grasp.core.base_task_executor.utils.get_file_in_task_dir",
             return_value="dummy_path.yaml",
         ),
-        patch("grasp.core.dataset.file_handler.FileHandler.read", return_value=[{"id": "abc"}]),
+        patch(
+            "grasp.core.dataset.file_handler.FileHandler.read",
+            return_value=[{"id": "abc"}],
+        ),
     ):
         with pytest.raises(ValueError, match="Invalid variable format"):
             BaseTaskExecutor(mock_args, graph_config_dict=mock_grasp_config)
@@ -635,7 +644,10 @@ def test_invalid_variable_type_in_output(mock_args, mock_grasp_config, mock_mode
 
 @patch("grasp.core.graph.graph_config.utils.load_yaml_file")
 @patch("grasp.core.graph.graph_config.utils.get_file_in_task_dir")
-@patch("grasp.core.graph.nodes.lambda_node.utils.get_func_from_str", return_value=lambda x: x)
+@patch(
+    "grasp.core.graph.nodes.lambda_node.utils.get_func_from_str",
+    return_value=lambda x: x,
+)
 def test_subgraph_merging(
     mock_get_func,
     mock_get_file,
@@ -716,7 +728,10 @@ def test_subgraph_merging(
 
 @patch("grasp.core.graph.graph_config.utils.load_yaml_file")
 @patch("grasp.core.graph.graph_config.utils.get_file_in_task_dir")
-@patch("grasp.core.graph.nodes.lambda_node.utils.get_func_from_str", return_value=lambda x: x)
+@patch(
+    "grasp.core.graph.nodes.lambda_node.utils.get_func_from_str",
+    return_value=lambda x: x,
+)
 def test_subgraph_merging_nested_looping(
     mock_get_func,
     mock_get_file,
@@ -815,7 +830,10 @@ def test_subgraph_merging_nested_looping(
 
 @patch("grasp.core.graph.graph_config.utils.load_yaml_file")
 @patch("grasp.core.graph.graph_config.utils.get_file_in_task_dir")
-@patch("grasp.core.graph.nodes.lambda_node.utils.get_func_from_str", return_value=lambda x: x)
+@patch(
+    "grasp.core.graph.nodes.lambda_node.utils.get_func_from_str",
+    return_value=lambda x: x,
+)
 def test_subgraph_merging_with_looping_edge(
     mock_get_func,
     mock_get_file,
@@ -900,7 +918,10 @@ def test_subgraph_merging_with_looping_edge(
 
 @patch("grasp.core.graph.graph_config.utils.load_yaml_file")
 @patch("grasp.core.graph.graph_config.utils.get_file_in_task_dir")
-@patch("grasp.core.graph.nodes.lambda_node.utils.get_func_from_str", return_value=lambda x: x)
+@patch(
+    "grasp.core.graph.nodes.lambda_node.utils.get_func_from_str",
+    return_value=lambda x: x,
+)
 def test_multiple_subgraphs_merging(
     mock_get_func,
     mock_get_file,
@@ -957,7 +978,10 @@ def test_multiple_subgraphs_merging(
 
 @patch("grasp.core.graph.graph_config.utils.load_yaml_file")
 @patch("grasp.core.graph.graph_config.utils.get_file_in_task_dir")
-@patch("grasp.core.graph.nodes.lambda_node.utils.get_func_from_str", return_value=lambda x: x)
+@patch(
+    "grasp.core.graph.nodes.lambda_node.utils.get_func_from_str",
+    return_value=lambda x: x,
+)
 def test_conditional_edge_from_subgraph(
     mock_get_func,
     mock_get_file,
@@ -1082,7 +1106,6 @@ def test_nested_config_override_merging(mock_args, mock_grasp_config, mock_model
     It sets an override to change the temperature in a model config,
     but since the override is not passed to the executor, the original value should remain unchanged.
     """
-    override = {"evol_text_node": {"model": {"parameters": {"temperature": 0.5}}}}
 
     def mock_load_yaml_file(*args, **kwargs):
         filepath = args[0] if args else kwargs.get("filepath", "")
@@ -1113,7 +1136,6 @@ def test_override_applied_only_to_specified_node(mock_args, mock_grasp_config, m
     An override is provided to change the `lambda` field for `build_text_node`,
     but the test asserts that no such change occurs unless explicitly applied.
     """
-    override = {"build_text_node": {"lambda": "custom.override.Class"}}
 
     def mock_load_yaml_file(*args, **kwargs):
         filepath = args[0] if args else kwargs.get("filepath", "")
@@ -1198,7 +1220,10 @@ def test_extract_from_dataset_object(mock_args, mock_grasp_config, mock_model_co
             "grasp.core.base_task_executor.utils.get_file_in_task_dir",
             return_value="dummy_path.yaml",
         ),
-        patch("grasp.core.dataset.file_handler.FileHandler.read", return_value=data_as_list),
+        patch(
+            "grasp.core.dataset.file_handler.FileHandler.read",
+            return_value=data_as_list,
+        ),
     ):
         executor = BaseTaskExecutor(mock_args, graph_config_dict=mock_grasp_config)
         assert "name" in executor.graph_config.state_variables
@@ -1387,7 +1412,10 @@ def test_duplicate_state_variables_error(mock_args, mock_grasp_config, mock_mode
             "grasp.core.base_task_executor.utils.get_file_in_task_dir",
             return_value="dummy_path.yaml",
         ),
-        patch("grasp.core.dataset.file_handler.FileHandler.read", return_value=[{"dup": "val"}]),
+        patch(
+            "grasp.core.dataset.file_handler.FileHandler.read",
+            return_value=[{"dup": "val"}],
+        ),
     ):
         executor = BaseTaskExecutor(mock_args, graph_config_dict=mock_grasp_config)
         node = executor.graph_config.get_nodes()["build_text_node"]

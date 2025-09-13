@@ -3,12 +3,11 @@ import copy
 import hashlib
 import json
 import os
-import types
 from abc import ABC
 from datetime import datetime
-from typing import Any, Optional, Union
+from typing import Any, Optional, Union, cast
 
-import datasets
+import datasets  # type: ignore[import-untyped]
 import numpy as np
 from langgraph.graph import StateGraph
 from PIL import Image
@@ -165,7 +164,7 @@ class BaseTaskExecutor(ABC):
 
         try:
             generator_cls = utils.get_func_from_str(gen_class_str)
-            output_generator = generator_cls(output_config)
+            output_generator = cast(BaseOutputGenerator, generator_cls(output_config))
             logger.info(f"Initialized output generator: {gen_class_str}")
             return output_generator
         except Exception as e:
@@ -175,7 +174,7 @@ class BaseTaskExecutor(ABC):
     # Initialize and return the langgraph StateGraph object for the task
     def init_graph(self) -> StateGraph:
         graph_builder = LangGraphBuilder(self.graph_config)
-        return graph_builder.build()
+        return cast(StateGraph, graph_builder.build())
 
     # Initialize and return the dataset for the task
     def init_dataset(
@@ -298,7 +297,7 @@ class BaseTaskExecutor(ABC):
             field_value.item(), (int, float, bool, str)
         ):
             return self._infer_field_type(field_name, field_value.item())
-        elif isinstance(field_value, types.NoneType):
+        elif field_value is None:
             return datasets.Value("null")
         else:
             logger.warning(
@@ -345,6 +344,9 @@ class BaseTaskExecutor(ABC):
 
     def _get_data_reader(self) -> Union[HuggingFaceHandler, FileHandler]:
         """Get appropriate data reader based on source type"""
+        if self.source_config is None:
+            raise ValueError("source_config must be set to get a data reader")
+
         if self.source_config.type == DataSourceType.HUGGINGFACE:
             return HuggingFaceHandler(self.source_config)
         elif self.source_config.type == DataSourceType.DISK_FILE:
@@ -355,6 +357,9 @@ class BaseTaskExecutor(ABC):
     def _read_data(self, reader) -> Union[list[dict], datasets.Dataset, datasets.IterableDataset]:
         """Read data from the configured source using the provided reader"""
         try:
+            if self.source_config is None:
+                raise ValueError("source_config must be set to read data")
+
             if self.source_config.shard is None:
                 return reader.read()
             else:
@@ -443,7 +448,7 @@ class BaseTaskExecutor(ABC):
 
         return data.map(_apply_transform_record)
 
-    def add_id(self, record) -> dict[str, Any]:
+    def add_id(self, record: dict[str, Any]) -> dict[str, Any]:
         """
         Add an "id" to the record. If the id_column is specified, use that value.
         If the id_column is not specified and the record does not have an "id", generate a hash of the record.
@@ -514,7 +519,7 @@ class BaseTaskExecutor(ABC):
             GraspState: The output state
         """
         if self.output_generator:
-            return self.output_generator.generate(state)
+            return cast(GraspState, self.output_generator.generate(state))
         else:
             return state
 
@@ -625,19 +630,22 @@ class BaseTaskExecutor(ABC):
                         else [json.loads(line) for line in f]
                     )
                 if self.output_config.type == OutputType.HUGGINGFACE:
-                    writer = HuggingFaceHandler(
+                    HuggingFaceHandler(
                         source_config=self.source_config,
                         output_config=self.output_config,
-                    )
-                    writer.write(data)
+                    ).write(data)
                 else:
-                    writer = FileHandler(
+                    if self.output_config.file_path is None:
+                        raise ValueError("file_path must be set for output_config")
+                    FileHandler(
                         source_config=self.source_config,
                         output_config=self.output_config,
-                    )
-                    writer.write(data, path=self.output_config.file_path)
+                    ).write(data, path=self.output_config.file_path)
+                type_value = (
+                    self.output_config.type.value if self.output_config.type is not None else "none"
+                )
                 logger.info(
-                    f"Successfully wrote output to sink: {self.output_config.type.value}, {self.output_config.model_dump()}"
+                    f"Successfully wrote output to sink: {type_value}, {self.output_config.model_dump()}"
                 )
             except Exception as e:
                 logger.error(f"Error writing to sink: {e}")
