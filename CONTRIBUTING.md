@@ -23,6 +23,30 @@ When everything is set up, you can refer to the
 
 sections to setup a synthetic data generation pipeline.
 
+## Pre-commit hooks
+
+We use [pre-commit](https://pre-commit.com/) to keep the codebase consistent. Hooks are run automatically on `git commit` (and some on `pre-push`).
+
+### One-time setup
+
+```bash
+# Install dependencies (includes pre-commit as a dev dep)
+poetry install
+
+# Install Git hooks for this repo
+poetry run pre-commit install
+poetry run pre-commit install -t pre-push
+
+# (optional) Warm the caches so your first commit is fast
+poetry run pre-commit run --all-files
+```
+
+#### Why pre-commit?
+
+- Fast feedback on style/format issues
+- Consistent code across contributors
+- Fewer “nit” comments in PR reviews
+
 ## How to submit a bug report
 
 [Open an issue on Github](https://github.com/ServiceNow/sygra/issues/new/choose) and select "Bug report". If you are not sure whether it is a bug or not, submit an issue and we will be able to help you.

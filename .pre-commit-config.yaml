@@ -1,0 +1,65 @@
+default_language_version:
+  python: python3.9
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: trailing-whitespace
+        args: [--markdown-linebreak-ext=md]
+      - id: end-of-file-fixer
+      - id: mixed-line-ending
+        args: [--fix=auto]
+      - id: check-merge-conflict
+      - id: check-json
+      - id: check-yaml
+      - id: check-toml
+      - id: check-ast
+      - id: debug-statements
+      - id: detect-private-key
+      - id: pretty-format-json
+        args: [--autofix, --no-ensure-ascii, --indent=2]
+      - id: check-illegal-windows-names
+      - id: check-case-conflict
+      - id: check-symlinks
+      - id: check-executables-have-shebangs
+      - id: check-shebang-scripts-are-executable
+      - id: requirements-txt-fixer
+      - id: no-commit-to-branch
+        args: [--branch, main]
+
+  - repo: https://github.com/pycqa/isort
+    rev: 5.13.2
+    hooks:
+      - id: isort
+        name: Sort imports with isort
+        files: ^(sygra|tests)/.*\.py$
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.2.1
+    hooks:
+      - id: ruff
+        name: Lint with Ruff
+        args: [--fix, --unsafe-fixes, --exit-non-zero-on-fix, --show-fixes]
+        files: ^(sygra|tests)/
+
+  - repo: https://github.com/psf/black
+    rev: 24.8.0
+    hooks:
+      - id: black
+        name: Format code with Black
+        files: ^(sygra|tests)/.*\.py$
+
+  - repo: https://github.com/python-poetry/poetry
+    rev: 1.7.0
+    hooks:
+      - id: poetry-check
+
+  - repo: local
+    hooks:
+      - id: pytest
+        name: Run tests with pytest
+        entry: poetry run pytest -q tests
+        language: system
+        pass_filenames: false
+        stages: [ pre-commit ]
