@@ -51,6 +51,7 @@ jobs:
         with:
           path: .venv
           key: venv-${{ runner.os }}-3.9-${{ hashFiles('**/poetry.lock', '**/pyproject.toml') }}
+      - run: make setup-dev
       - run: make check-format
   # Run Linting
   lint:
@@ -70,6 +71,7 @@ jobs:
         with:
           path: .venv
           key: venv-${{ runner.os }}-3.9-${{ hashFiles('**/poetry.lock', '**/pyproject.toml') }}
+      - run: make setup-dev
       - run: make check-lint
   # Run Tests
   test:
@@ -89,6 +91,7 @@ jobs:
         with:
           path: .venv
           key: venv-${{ runner.os }}-3.9-${{ hashFiles('**/poetry.lock', '**/pyproject.toml') }}
+      - run: make setup-dev
       - run: make test
   # Build Docs
   docs_build:
@@ -108,6 +111,7 @@ jobs:
         with:
           path: .venv
           key: venv-${{ runner.os }}-3.9-${{ hashFiles('**/poetry.lock', '**/pyproject.toml') }}
+      - run: make setup-dev
       - run: make docs
       - uses: actions/upload-pages-artifact@v3
         with:
