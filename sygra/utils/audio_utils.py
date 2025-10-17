@@ -2,7 +2,8 @@ import base64
 import io
 import os
 import re
-from typing import Any, Union, cast
+from pathlib import Path
+from typing import Any, Tuple, Union, cast
 
 import numpy as np
 import requests  # type: ignore[import-untyped]
@@ -218,3 +219,102 @@ def expand_audio_item(item: dict[str, Any], state: dict[str, Any]) -> list[dict[
     else:
         expanded.append(item)
     return expanded
+
+
+def parse_audio_data_url(data_url: str) -> Tuple[str, str, bytes]:
+    """
+    Parse an audio data URL and extract MIME type, extension, and decoded content.
+
+    Args:
+        data_url (str): The data URL string (e.g., "data:audio/wav;base64,...")
+
+    Returns:
+        Tuple[str, str, bytes]: Tuple of (mime_type, file_extension, decoded_bytes)
+
+    Raises:
+        ValueError: If the data URL format is invalid
+    """
+    # Pattern: data:<mime_type>;base64,<base64_data>
+    pattern = r'^data:([^;]+);base64,(.+)$'
+    match = re.match(pattern, data_url)
+
+    if not match:
+        raise ValueError(f"Invalid audio data URL format: {data_url[:50]}...")
+
+    mime_type = match.group(1)
+    base64_data = match.group(2)
+
+    # Decode base64 data
+    try:
+        decoded_bytes = base64.b64decode(base64_data)
+    except Exception as e:
+        raise ValueError(f"Failed to decode base64 data: {e}")
+
+    # Determine file extension from MIME type
+    mime_to_ext = {
+        'audio/mpeg': 'mp3',
+        'audio/mp3': 'mp3',
+        'audio/opus': 'opus',
+        'audio/aac': 'aac',
+        'audio/flac': 'flac',
+        'audio/wav': 'wav',
+        'audio/wave': 'wav',
+        'audio/pcm': 'pcm',
+        'audio/ogg': 'ogg',
+        'audio/m4a': 'm4a',
+        'audio/aiff': 'aiff',
+    }
+
+    file_extension = mime_to_ext.get(mime_type, mime_type.split('/')[-1])
+
+    return mime_type, file_extension, decoded_bytes
+
+
+def save_audio_data_url(
+    data_url: str,
+    output_dir: Path,
+    record_id: str,
+    field_name: str,
+    index: int = 0
+) -> str:
+    """
+    Save an audio data URL to a file and return the file path.
+
+    Args:
+        data_url (str): The base64 data URL to save
+        output_dir (Path): Directory where the file should be saved
+        record_id (str): ID of the record (for unique filename)
+        field_name (str): Name of the field containing the data
+        index (int): Index if the field contains multiple items (default: 0)
+
+    Returns:
+        str: Relative path to the saved file
+
+    Raises:
+        ValueError: If the data URL is invalid or saving fails
+    """
+    try:
+        # Parse the data URL
+        mime_type, file_extension, decoded_bytes = parse_audio_data_url(data_url)
+
+        # Create subdirectory for audio
+        audio_dir = output_dir / "audio"
+        audio_dir.mkdir(parents=True, exist_ok=True)
+
+        # Create filename: record_id_fieldname_index.extension
+        filename = f"{record_id}_{field_name}_{index}.{file_extension}"
+        file_path = audio_dir / filename
+
+        # Save the decoded bytes to file
+        with open(file_path, 'wb') as f:
+            f.write(decoded_bytes)
+
+        # full path from root
+        full_path = str(file_path.resolve())
+
+        logger.debug(f"Saved audio file: {full_path} ({len(decoded_bytes)} bytes)")
+        return full_path
+
+    except Exception as e:
+        logger.error(f"Failed to save audio data: {e}")
+        raise

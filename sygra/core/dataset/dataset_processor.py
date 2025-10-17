@@ -3,6 +3,7 @@ import os
 import signal
 import time
 import uuid
+from pathlib import Path
 from typing import Any, Callable, Optional, Union, cast
 
 import datasets  # type: ignore[import-untyped]
@@ -13,7 +14,7 @@ from sygra.core.graph.graph_config import GraphConfig
 from sygra.core.resumable_execution import ResumableExecutionManager
 from sygra.data_mapper.mapper import DataMapper
 from sygra.logger.logger_config import logger
-from sygra.utils import constants, graph_utils, utils
+from sygra.utils import constants, graph_utils, multimodal_processor, utils
 from sygra.validators.schema_validator_base import SchemaValidator
 
 
@@ -285,6 +286,15 @@ class DatasetProcessor:
         output_records = graph_utils.convert_graph_output_to_records(
             self.graph_results, self.output_record_generator
         )
+
+        # Process multimodal data: save base64 data URLs to files and replace with file paths
+        try:
+            multimodal_output_dir = ".".join(self.output_file.split(".")[:-1])
+            output_records = multimodal_processor.process_batch_multimodal_data(
+                output_records, Path(multimodal_output_dir)
+            )
+        except Exception as e:
+            logger.warning(f"Failed to process multimodal data: {e}. Continuing with original records.")
 
         # Handle intermediate writing if needed
         if (

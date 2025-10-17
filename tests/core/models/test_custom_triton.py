@@ -227,8 +227,8 @@ class TestCustomTriton(unittest.TestCase):
     @patch("sygra.core.models.custom_models.utils")
     @patch("sygra.core.models.custom_models.BaseCustomModel._set_client")
     @pytest.mark.asyncio
-    async def test_generate_text_success(self, mock_set_client, mock_utils):
-        """Test _generate_text method with successful response"""
+    async def test_generate_response_success(self, mock_set_client, mock_utils):
+        """Test _generate_response method with successful response"""
         # Setup mock client
         mock_client = MagicMock()
         mock_client.build_request.return_value = {"payload": "test_payload"}
@@ -259,9 +259,9 @@ class TestCustomTriton(unittest.TestCase):
         custom_triton._get_payload_json_template = MagicMock(return_value=self.mock_payload_json)
         custom_triton._create_triton_request = MagicMock(return_value=self.mock_payload_json)
 
-        # Call _generate_text
+        # Call _generate_response
         model_params = ModelParams(url="http://triton-test.com", auth_token="test_token")
-        resp_text, resp_status = await custom_triton._generate_text(self.chat_input, model_params)
+        resp_text, resp_status = await custom_triton._generate_response(self.chat_input, model_params)
 
         # Verify results
         self.assertEqual(resp_text, "Hello there!")
@@ -280,8 +280,8 @@ class TestCustomTriton(unittest.TestCase):
     @patch("sygra.core.models.custom_models.utils")
     @patch("sygra.core.models.custom_models.BaseCustomModel._set_client")
     @pytest.mark.asyncio
-    async def test_generate_text_http_error(self, mock_set_client, mock_utils, mock_logger):
-        """Test _generate_text method with HTTP error"""
+    async def test_generate_response_http_error(self, mock_set_client, mock_utils, mock_logger):
+        """Test _generate_response method with HTTP error"""
         # Setup mock client
         mock_client = MagicMock()
         mock_client.build_request.return_value = {"payload": "test_payload"}
@@ -311,9 +311,9 @@ class TestCustomTriton(unittest.TestCase):
         custom_triton._get_payload_json_template = MagicMock(return_value=self.mock_payload_json)
         custom_triton._create_triton_request = MagicMock(return_value=self.mock_payload_json)
 
-        # Call _generate_text
+        # Call _generate_response
         model_params = ModelParams(url="http://triton-test.com", auth_token="test_token")
-        resp_text, resp_status = await custom_triton._generate_text(self.chat_input, model_params)
+        resp_text, resp_status = await custom_triton._generate_response(self.chat_input, model_params)
 
         # Verify results
         self.assertEqual(resp_text, "")
@@ -327,8 +327,8 @@ class TestCustomTriton(unittest.TestCase):
     @patch("sygra.core.models.custom_models.logger")
     @patch("sygra.core.models.custom_models.BaseCustomModel._set_client")
     @pytest.mark.asyncio
-    async def test_generate_text_exception(self, mock_set_client, mock_logger):
-        """Test _generate_text method with exception"""
+    async def test_generate_response_exception(self, mock_set_client, mock_logger):
+        """Test _generate_response method with exception"""
         # Setup mock client
         mock_client = MagicMock()
         mock_client.build_request.side_effect = Exception("Test error")
@@ -338,9 +338,9 @@ class TestCustomTriton(unittest.TestCase):
         custom_triton._client = mock_client
         custom_triton._get_status_from_body = MagicMock(return_value=None)
 
-        # Call _generate_text
+        # Call _generate_response
         model_params = ModelParams(url="http://triton-test.com", auth_token="test_token")
-        resp_text, resp_status = await custom_triton._generate_text(self.chat_input, model_params)
+        resp_text, resp_status = await custom_triton._generate_response(self.chat_input, model_params)
 
         # Verify results
         self.assertEqual(resp_text, "Http request failed Test error")

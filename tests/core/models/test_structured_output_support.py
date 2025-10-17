@@ -48,7 +48,7 @@ class UserSchema(BaseModel):
 # Test model that implements abstract method
 class CustomModel(BaseCustomModel):
     @pytest.mark.asyncio
-    async def _generate_text(self, input, model_params):
+    async def _generate_response(self, input, model_params):
         return "test response", 200
 
     def _supports_native_structured_output(self):
@@ -276,7 +276,7 @@ class TestStructuredOutputMethods(unittest.IsolatedAsyncioTestCase):
         mock_output_parser.return_value = mock_parser_instance
 
         model = CustomModel(self.test_config)
-        model._generate_text_with_retry = AsyncMock(return_value=(self.valid_json, 200))
+        model._generate_response_with_retry = AsyncMock(return_value=(self.valid_json, 200))
 
         # Execute
         resp_text, resp_status = await model._generate_fallback_structured_output(
@@ -549,7 +549,7 @@ class TestStructuredOutputMethods(unittest.IsolatedAsyncioTestCase):
         mock_output_parser.return_value = mock_parser_instance
 
         model = CustomModel(self.test_config)
-        model._generate_text_with_retry = AsyncMock(return_value=("Invalid JSON", 200))
+        model._generate_response_with_retry = AsyncMock(return_value=("Invalid JSON", 200))
 
         # Execute
         resp_text, resp_status = await model._generate_fallback_structured_output(
@@ -630,7 +630,7 @@ class TestStructuredOutputMethods(unittest.IsolatedAsyncioTestCase):
 
     @patch("sygra.utils.utils.validate_required_keys")
     @patch("sygra.core.models.structured_output.structured_output_config.SchemaConfigParser")
-    async def test_ollama_generate_text_success(self, mock_parser, mock_utils):
+    async def test_ollama_generate_response_success(self, mock_parser, mock_utils):
         """Test Ollama regular text generation success"""
         model = CustomOllama({**self.test_config, "url": "test", "auth_token": "test"})
 
@@ -641,20 +641,20 @@ class TestStructuredOutputMethods(unittest.IsolatedAsyncioTestCase):
 
         # Mock _set_client to prevent it from overwriting our mock client
         with patch.object(model, "_set_client"):
-            resp_text, resp_status = await model._generate_text(self.test_input, self.test_params)
+            resp_text, resp_status = await model._generate_response(self.test_input, self.test_params)
 
             self.assertEqual(resp_text, "Generated text response")
             self.assertEqual(resp_status, 200)
 
     @patch("sygra.utils.utils.validate_required_keys")
     @patch("sygra.core.models.structured_output.structured_output_config.SchemaConfigParser")
-    async def test_ollama_generate_text_exception_handling(self, mock_parser, mock_utils):
+    async def test_ollama_generate_response_exception_handling(self, mock_parser, mock_utils):
         """Test Ollama regular text generation exception handling"""
         model = CustomOllama({**self.test_config, "url": "test", "auth_token": "test"})
 
         # Mock _set_client to raise an exception
         with patch.object(model, "_set_client", side_effect=Exception("Connection failed")):
-            resp_text, resp_status = await model._generate_text(self.test_input, self.test_params)
+            resp_text, resp_status = await model._generate_response(self.test_input, self.test_params)
 
             self.assertIn("ERROR", resp_text)
             self.assertIn("Connection failed", resp_text)

@@ -76,8 +76,8 @@ class TestCustomOllama(unittest.TestCase):
         self.assertTrue(custom_ollama.model_config.get("completions_api"))
 
     @pytest.mark.asyncio
-    async def test_generate_text_chat_completions(self):
-        """Test _generate_text method with chat completions API"""
+    async def test_generate_response_chat_completions(self):
+        """Test _generate_response method with chat completions API"""
         # Setup mock client
         mock_client = MagicMock()
         mock_client.build_request.return_value = {
@@ -89,9 +89,9 @@ class TestCustomOllama(unittest.TestCase):
         custom_ollama = CustomOllama(self.base_config)
         custom_ollama._client = mock_client
 
-        # Call _generate_text
+        # Call _generate_response
         model_params = ModelParams(url="http://localhost:11434")
-        resp_text, resp_status = await custom_ollama._generate_text(self.chat_input, model_params)
+        resp_text, resp_status = await custom_ollama._generate_response(self.chat_input, model_params)
 
         # Verify results
         self.assertEqual(resp_text, "Hello there!")
@@ -110,10 +110,10 @@ class TestCustomOllama(unittest.TestCase):
     @patch("sygra.core.models.custom_models.BaseCustomModel._finalize_response")
     @patch("sygra.core.models.custom_models.BaseCustomModel.get_chat_formatted_text")
     @pytest.mark.asyncio
-    async def test_generate_text_completions_api(
+    async def test_generate_response_completions_api(
         self, mock_get_formatted, mock_finalize, mock_set_client, mock_client_factory
     ):
-        """Test _generate_text method with completions API"""
+        """Test _generate_response method with completions API"""
         # Setup mock client
         mock_client = MagicMock()
         mock_client.build_request.return_value = {"prompt": "Hello, how are you?"}
@@ -128,9 +128,9 @@ class TestCustomOllama(unittest.TestCase):
         # Mock the get_chat_formatted_text method
         mock_get_formatted.return_value = "Hello, how are you?"
 
-        # Call _generate_text
+        # Call _generate_response
         model_params = ModelParams(url="http://localhost:11434")
-        resp_text, resp_status = await custom_ollama._generate_text(self.chat_input, model_params)
+        resp_text, resp_status = await custom_ollama._generate_response(self.chat_input, model_params)
 
         # Verify results
         self.assertEqual(resp_text, "I'm doing well, thank you!")
@@ -148,10 +148,10 @@ class TestCustomOllama(unittest.TestCase):
     @patch("sygra.core.models.custom_models.BaseCustomModel._set_client")
     @patch("sygra.core.models.custom_models.BaseCustomModel._finalize_response")
     @pytest.mark.asyncio
-    async def test_generate_text_exception(
+    async def test_generate_response_exception(
         self, mock_finalize, mock_set_client, mock_client_factory
     ):
-        """Test _generate_text method with an exception"""
+        """Test _generate_response method with an exception"""
         # Setup mock client to raise an exception
         mock_client = MagicMock()
         mock_client.build_request.return_value = {
@@ -163,9 +163,9 @@ class TestCustomOllama(unittest.TestCase):
         custom_ollama = CustomOllama(self.base_config)
         custom_ollama._client = mock_client
 
-        # Call _generate_text
+        # Call _generate_response
         model_params = ModelParams(url="http://localhost:11434")
-        resp_text, resp_status = await custom_ollama._generate_text(self.chat_input, model_params)
+        resp_text, resp_status = await custom_ollama._generate_response(self.chat_input, model_params)
 
         # Verify error handling
         self.assertTrue(resp_text.startswith(f"{constants.ERROR_PREFIX} Ollama request failed"))

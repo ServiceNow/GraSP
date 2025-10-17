@@ -72,7 +72,7 @@ class TestValidateCompletionApiSupport(unittest.TestCase):
 
         # Create a test implementation of BaseCustomModel
         class TestBaseModel(BaseCustomModel):
-            def _generate_text(self, *args, **kwargs):
+            def _generate_response(self, *args, **kwargs):
                 pass
 
             def name(self):
@@ -97,7 +97,7 @@ class TestValidateCompletionApiSupport(unittest.TestCase):
 
         # Create a test implementation of BaseCustomModel
         class TestBaseModel(BaseCustomModel):
-            def _generate_text(self, *args, **kwargs):
+            def _generate_response(self, *args, **kwargs):
                 pass
 
             def name(self):

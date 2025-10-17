@@ -182,3 +182,41 @@ class OpenAIClient(BaseClient):
                     extra_body=additional_params,
                     **standard_params,
                 )
+
+    async def create_speech(
+        self,
+        model: str,
+        input: str,
+        voice: str,
+        response_format: str = "mp3",
+        speed: float = 1.0,
+    ) -> Any:
+        """
+        Create speech audio from text using OpenAI's text-to-speech API.
+
+        Args:
+            model (str): The TTS model to use (e.g., 'tts-1', 'tts-1-hd')
+            input (str): The text to convert to speech
+            voice (str): The voice to use like alloy, echo, fable, onyx, nova, shimmer etc.
+            response_format (str, optional): The audio formats like mp3, opus, aac, flac, wav, pcm etc. Defaults to 'wav'
+            speed (float, optional): The speed of the audio (0.25 to 4.0). Defaults to 1.0
+
+        Returns:
+            Any: The audio response from the API
+
+        Raises:
+            ValueError: If async_client is False (TTS requires async client)
+        """
+        if not self.async_client:
+            raise ValueError(
+                "TTS API requires async client. Please initialize with async_client=True"
+            )
+
+        client = cast(Any, self.client)
+        return await client.audio.speech.create(
+            model=model,
+            input=input,
+            voice=voice,
+            response_format=response_format,
+            speed=speed,
+        )
