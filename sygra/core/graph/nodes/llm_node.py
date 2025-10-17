@@ -61,6 +61,14 @@ class LLMNode(BaseNode):
         self.task_name = utils.current_task
         self.graph_properties = utils.get_graph_properties(self.task_name)
 
+        # Currently we support direct passing of tools which have decorator @tool and of type Langgraph's BaseTool Class.
+        self.tools = []
+        tool_paths = self.node_config.get("tools", [])
+        if tool_paths:
+            from sygra.utils.tool_utils import load_tools
+
+            self.tools = load_tools(tool_paths)
+
     def _initialize_model(self):
         """
         Initialize the LLM model using ModelFactory.
@@ -213,7 +221,7 @@ class LLMNode(BaseNode):
         # convert the request into chat format to store for multi turn
         request_msgs = graph_factory.convert_to_chat_format(prompt.to_messages())
         # now call the llm server
-        response = await self.model.ainvoke(prompt)
+        response = await self.model.ainvoke(prompt, tools=self.tools, tool_choice="auto")
         # wrap the message to pass to the class - new implementation
         responseMsg = SygraMessage(response)
 

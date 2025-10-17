@@ -23,6 +23,7 @@ import openai
 from langchain_core.messages import AIMessage, BaseMessage
 from langchain_core.output_parsers import PydanticOutputParser
 from langchain_core.prompt_values import ChatPromptValue
+from langchain_core.utils.function_calling import convert_to_openai_tool
 from pydantic import BaseModel, ValidationError
 from tenacity import (
     AsyncRetrying,
@@ -156,9 +157,9 @@ class BaseCustomModel(ABC):
         # reduce the count of requests for the url to handle least_requests load balancing
         self.url_reqs_count[model_url] -= 1
         logger.debug(f"[{self.name()}][{model_url}] RESPONSE: {model_response.llm_response}")
-        resp_text = self._replace_special_tokens(model_response.llm_response)
-        resp_text = self._post_process_for_model(resp_text)
-        return AIMessage(resp_text)
+        model_response.llm_response = self._replace_special_tokens(model_response.llm_response)
+        model_response.llm_response = self._post_process_for_model(model_response.llm_response)
+        return AIMessage(model_response.llm_response)
 
     async def _get_lock(self) -> asyncio.Lock:
         if self._structured_output_lock is None:
@@ -1053,10 +1054,11 @@ class CustomOpenAI(BaseCustomModel):
             )
 
     async def _generate_text(
-        self, input: ChatPromptValue, model_params: ModelParams
+            self, input: ChatPromptValue, model_params: ModelParams, **kwargs: Any
     ) -> ModelResponse:
         ret_code = 200
         model_url = model_params.url
+        tool_calls = None
         try:
             # create azure openai client for every request otherwise it starts failing
             # set header to close connection otherwise spurious event loop errors show up - https://github.com/encode/httpx/discussions/2959#discussioncomment-7665278
@@ -1066,13 +1068,20 @@ class CustomOpenAI(BaseCustomModel):
                 payload = self._client.build_request(formatted_prompt=formatted_prompt)
             else:
                 payload = self._client.build_request(messages=input.messages)
+            if kwargs.get("tools"):
+                tools = kwargs.get("tools")
+                formatted_tools = [convert_to_openai_tool(tool, strict=True) for tool in tools]
+                self.generation_params.update({"tools": formatted_tools})
+            if kwargs.get("tool_choice"):
+                self.generation_params.update({"tool_choice": kwargs.get("tool_choice")})
             completion = await self._client.send_request(
                 payload, str(self.model_config.get("model")), self.generation_params
             )
+            tool_calls = completion.choices[0].model_dump()["message"]["tool_calls"]
             if self.model_config.get("completions_api", False):
-                resp_text = completion.choices[0].model_dump()["text"].strip()
+                resp_text = completion.choices[0].model_dump()["text"]
             else:
-                resp_text = completion.choices[0].model_dump()["message"]["content"].strip()
+                resp_text = completion.choices[0].model_dump()["message"]["content"]
         except openai.RateLimitError as e:
             logger.warn(f"AzureOpenAI api request exceeded rate limit: {e}")
             resp_text = f"{constants.ERROR_PREFIX} Http request failed {e}"
@@ -1082,7 +1091,7 @@ class CustomOpenAI(BaseCustomModel):
             logger.error(resp_text)
             rcode = self._get_status_from_body(x)
             ret_code = rcode if rcode else 999
-        return ModelResponse(llm_response=resp_text, response_code=ret_code)
+        return ModelResponse(llm_response=resp_text, response_code=ret_code, tool_calls=tool_calls)
 
 
 class CustomOllama(BaseCustomModel):

@@ -1,0 +1,48 @@
+data_config:
+  source:
+    type: "disk"
+    file_path: "tasks/examples/llm_node_tool_simulation/user_queries.json"
+    file_format: "json"
+
+graph_config:
+  nodes:
+    math_agent:
+      node_type: llm
+      post_process: tasks.examples.llm_node_tool_simulation.task_executor.MathAgentPostProcessor
+      output_keys: math_result
+      tools:
+          - tasks.examples.agent_tool_simulation.tools.add
+          - tasks.examples.agent_tool_simulation.tools_from_class.ToolClass
+          - tasks.examples.agent_tool_simulation.tools_from_module
+      prompt:
+        - system: |
+            You are a math agent that can perform basic arithmetic operations.
+            You can use the following tools:
+            - add: Adds two numbers.
+            - subtract: Subtracts the second number from the first.
+            - multiply: Multiplies two numbers.
+            - divide: Divides the first number by the second.
+        - user: |
+            {user_query}
+      model:
+        name: gpt-4o
+        parameters:
+          temperature: 0
+  edges:
+    - from: START
+      to: math_agent
+    - from: math_agent
+      to: END
+output_config:
+  output_map:
+    id:
+      from: "id"
+    "user_query":
+      from: "user_query"
+    "math_result":
+      from: "math_result"
+
+  oasst_mapper:
+    required: "no"
+    type: "sft"
+    intermediate_writing: "yes"

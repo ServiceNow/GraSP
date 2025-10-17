@@ -1,0 +1,14 @@
+[
+  {
+    "user_query": "Can you give me answer for (2+3)?"
+  },
+  {
+    "user_query": "Can you give me answer for multiplying 2 and 3?"
+  },
+  {
+    "user_query": "Can you give me answer for 3/2?"
+  },
+  {
+    "user_query": "Can you give me answer for subtracting 2 from 3?"
+  }
+]
